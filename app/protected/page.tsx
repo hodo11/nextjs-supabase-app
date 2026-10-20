@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
@@ -34,6 +35,9 @@ export default function ProtectedPage() {
           </Suspense>
         </pre>
       </div>
+      <Link href="/home" className="text-sm underline">
+        프로토타입 홈(/home)으로 이동
+      </Link>
       <div>
         <h2 className="mb-4 text-2xl font-bold">Next steps</h2>
         <FetchDataSteps />
