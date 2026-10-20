@@ -10,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { GoogleSignInButton } from "@/components/google-sign-in-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
@@ -103,6 +104,12 @@ export function LoginForm({
               </Link>
             </div>
           </form>
+          <div className="my-4 flex items-center gap-3 text-sm text-muted-foreground">
+            <div className="h-px flex-1 bg-border" />
+            or
+            <div className="h-px flex-1 bg-border" />
+          </div>
+          <GoogleSignInButton />
         </CardContent>
       </Card>
     </div>
