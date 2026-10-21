@@ -3,29 +3,36 @@ import { Suspense } from "react";
 import { PageSkeleton } from "@/components/page-skeleton";
 import { CircleAlert, CircleCheck, Users } from "lucide-react";
 import Link from "next/link";
+import type { Metadata } from "next";
 
 import { InviteAcceptButton } from "@/components/group/invite-accept-button";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { lookupInvite } from "@/lib/dummy/queries";
-import {
-  getViewerId,
-  resolveViewRole,
-  withView,
-  type PreviewSearchParams,
-} from "@/lib/dummy/preview";
+import { getOptionalUser } from "@/lib/supabase/auth";
 
-// 더미 초대 코드: swim-2026(이미 멤버), hike-2026(정상), 그 외(무효)
-async function InvitePageContent({
+export async function generateMetadata({
   params,
-  searchParams,
 }: {
   params: Promise<{ code: string }>;
-  searchParams: PreviewSearchParams;
+}): Promise<Metadata> {
+  const { code } = await params;
+  const result = await lookupInvite(code, null);
+  const name = result.state === "invalid" ? "초대 링크" : result.group.name;
+  return {
+    title: `${name} 모임 초대`,
+    openGraph: { title: `${name} 모임에 초대되었습니다` },
+  };
+}
+
+async function InvitePageContent({
+  params,
+}: {
+  params: Promise<{ code: string }>;
 }) {
   const { code } = await params;
-  const role = await resolveViewRole(searchParams);
-  const result = await lookupInvite(code, getViewerId(role));
+  const user = await getOptionalUser();
+  const result = await lookupInvite(code, user?.id ?? null);
 
   if (result.state === "invalid") {
     return (
@@ -40,7 +47,7 @@ async function InvitePageContent({
             </p>
           </div>
           <Button asChild variant="outline">
-            <Link href={withView("/home", role)}>홈으로 가기</Link>
+            <Link href="/home">홈으로 가기</Link>
           </Button>
         </CardContent>
       </Card>
@@ -57,9 +64,7 @@ async function InvitePageContent({
             <p className="text-sm text-muted-foreground">{result.group.name}</p>
           </div>
           <Button asChild>
-            <Link href={withView(`/groups/${result.group.id}`, role)}>
-              모임으로 이동
-            </Link>
+            <Link href={`/groups/${result.group.id}`}>모임으로 이동</Link>
           </Button>
         </CardContent>
       </Card>
@@ -78,10 +83,7 @@ async function InvitePageContent({
           </p>
         </div>
         <div className="flex w-full flex-col gap-2">
-          <InviteAcceptButton
-            groupName={result.group.name}
-            redirectHref={withView("/groups", role)}
-          />
+          <InviteAcceptButton code={code} isLoggedIn={user !== null} />
           <p className="text-xs text-muted-foreground">
             로그인 후 이 링크로 돌아와 바로 참여됩니다.
           </p>

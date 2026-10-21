@@ -22,21 +22,34 @@ export const profiles: Profile[] = [
   { id: "u7", display_name: "오지호" },
 ];
 
+function group(
+  id: string,
+  name: string,
+  invite_code: string,
+  owner_id: string,
+  created_at: string,
+): Group {
+  return {
+    id,
+    name,
+    invite_code,
+    owner_id,
+    created_at,
+    updated_at: created_at,
+  };
+}
+
 export const groups: Group[] = [
-  {
-    id: "g1",
-    name: "토요 수영 모임",
-    invite_code: "swim-2026",
-    owner_id: "u1",
-  },
-  { id: "g2", name: "수요 헬스 크루", invite_code: "gym-2026", owner_id: "u1" },
+  group("g1", "토요 수영 모임", "swim-2026", "u1", "2026-08-01T10:00:00+09:00"),
+  group("g2", "수요 헬스 크루", "gym-2026", "u1", "2026-09-01T10:00:00+09:00"),
   // 보는 사람(u1, u2)이 멤버가 아닌 모임: 초대 수락 화면용
-  {
-    id: "g3",
-    name: "주말 등산 친구들",
-    invite_code: "hike-2026",
-    owner_id: "u3",
-  },
+  group(
+    "g3",
+    "주말 등산 친구들",
+    "hike-2026",
+    "u3",
+    "2026-10-01T10:00:00+09:00",
+  ),
 ];
 
 function member(
@@ -68,7 +81,7 @@ export const groupMembers: GroupMember[] = [
   member("g3", "u5", "member", "2026-10-03T10:00:00+09:00"),
 ];
 
-export const events: Event[] = [
+const rawEvents: Omit<Event, "created_at" | "updated_at">[] = [
   {
     id: "e1",
     group_id: "g1",
@@ -154,6 +167,12 @@ export const events: Event[] = [
     reminder_sent_at: "2026-10-07T08:00:00+09:00",
   },
 ];
+
+export const events: Event[] = rawEvents.map((e) => ({
+  ...e,
+  created_at: e.rsvp_deadline,
+  updated_at: e.rsvp_deadline,
+}));
 
 function rsvp(
   event_id: string,

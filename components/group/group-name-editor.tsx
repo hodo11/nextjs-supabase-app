@@ -25,15 +25,18 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { renameGroup } from "@/lib/actions/groups";
 import { groupSchema, type GroupFormValues } from "@/lib/validations/group";
 
 interface GroupNameEditorProps {
+  groupId: string;
   initialName: string;
   canEdit: boolean;
 }
 
-// 모임 이름 표시 + 주최자 전용 이름 수정(로컬 상태만 변경).
+// 모임 이름 표시 + 주최자 전용 이름 수정.
 export function GroupNameEditor({
+  groupId,
   initialName,
   canEdit,
 }: GroupNameEditorProps) {
@@ -44,10 +47,15 @@ export function GroupNameEditor({
     defaultValues: { name: initialName },
   });
 
-  function onSubmit(values: GroupFormValues) {
-    setName(values.name);
+  async function onSubmit(values: GroupFormValues) {
+    const result = await renameGroup(groupId, values);
+    if (!result.ok) {
+      toast.error(result.error);
+      return;
+    }
+    setName(result.data.name);
     setOpen(false);
-    toast.success("모임 이름을 수정했습니다 (프로토타입)");
+    toast.success("모임 이름을 수정했습니다");
   }
 
   return (

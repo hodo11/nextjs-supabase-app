@@ -13,28 +13,21 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getNow } from "@/lib/dummy/clock";
 import {
-  getViewerId,
-  resolveViewRole,
-  withView,
-  type PreviewSearchParams,
-} from "@/lib/dummy/preview";
-import {
   getEventsByGroup,
   getGroup,
   getMyRole,
   getRsvps,
 } from "@/lib/dummy/queries";
+import { requireUser } from "@/lib/supabase/auth";
 
 async function GroupDetailPageContent({
   params,
-  searchParams,
 }: {
   params: Promise<{ groupId: string }>;
-  searchParams: PreviewSearchParams;
 }) {
   const { groupId } = await params;
-  const viewRole = await resolveViewRole(searchParams);
-  const viewerId = getViewerId(viewRole);
+  const user = await requireUser(`/groups/${groupId}`);
+  const viewerId = user.id;
 
   const [group, myRole, eventList, now] = await Promise.all([
     getGroup(groupId),
@@ -75,7 +68,7 @@ async function GroupDetailPageContent({
               <EventCard
                 event={event}
                 phase={phase}
-                href={withView(`/events/${event.id}`, viewRole)}
+                href={`/events/${event.id}`}
                 goingCount={rsvps.filter((r) => r.status === "going").length}
                 myStatus={rsvps.find((r) => r.user_id === viewerId)?.status}
               />
@@ -89,23 +82,27 @@ async function GroupDetailPageContent({
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-3">
-        <GroupNameEditor initialName={group.name} canEdit={isHost} />
+        <GroupNameEditor
+          groupId={group.id}
+          initialName={group.name}
+          canEdit={isHost}
+        />
         <div className="flex flex-wrap gap-2">
           <Button asChild variant="outline" size="sm">
-            <Link href={withView(`/groups/${group.id}/members`, viewRole)}>
+            <Link href={`/groups/${group.id}/members`}>
               <Users />
               멤버
             </Link>
           </Button>
           <Button asChild variant="outline" size="sm">
-            <Link href={withView(`/groups/${group.id}/attendance`, viewRole)}>
+            <Link href={`/groups/${group.id}/attendance`}>
               <ClipboardCheck />
               출석 현황
             </Link>
           </Button>
           {isHost ? (
             <Button asChild size="sm">
-              <Link href={withView(`/groups/${group.id}/events/new`, viewRole)}>
+              <Link href={`/groups/${group.id}/events/new`}>
                 <CalendarPlus />
                 이벤트 만들기
               </Link>
@@ -114,7 +111,11 @@ async function GroupDetailPageContent({
         </div>
       </div>
 
-      <InviteLinkCard initialCode={group.invite_code} canReissue={isHost} />
+      <InviteLinkCard
+        groupId={group.id}
+        initialCode={group.invite_code}
+        canReissue={isHost}
+      />
 
       <Tabs defaultValue="upcoming">
         <TabsList>

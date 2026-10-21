@@ -3,7 +3,6 @@ import { Suspense } from "react";
 
 import { AppNav } from "@/components/app-nav";
 import { LogoutButton } from "@/components/logout-button";
-import { PreviewToggle } from "@/components/preview-toggle";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -21,9 +20,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </Suspense>
           </div>
           <div className="flex items-center gap-1">
-            <Suspense>
-              <PreviewToggle />
-            </Suspense>
             <ThemeSwitcher />
             <LogoutButton />
           </div>

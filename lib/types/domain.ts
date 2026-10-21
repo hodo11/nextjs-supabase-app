@@ -1,5 +1,6 @@
-// PRD 6장 데이터 모델과 필드명을 맞춘 수기 타입(Task 007에서 생성 타입 별칭으로 교체).
-// 시각 필드는 ISO 8601 문자열(timestamptz)이다.
+// Supabase 생성 타입(lib/database.types.ts) 기반 별칭.
+// check 제약은 생성 타입에 리터럴로 반영되지 않으므로 role/status만 수기로 좁힌다.
+import type { Tables } from "@/lib/database.types";
 
 export type GroupRole = "host" | "member";
 
@@ -8,45 +9,29 @@ export interface Profile {
   display_name: string;
 }
 
-export interface Group {
-  id: string;
-  name: string;
-  invite_code: string;
-  owner_id: string;
-}
+export type Group = Tables<"groups">;
 
-export interface GroupMember {
-  group_id: string;
-  user_id: string;
+export type GroupMember = Omit<Tables<"group_members">, "role"> & {
   role: GroupRole;
-  joined_at: string;
-}
+};
 
 export type EventStatus = "active" | "cancelled";
 
-export interface Event {
-  id: string;
-  group_id: string;
-  title: string;
-  starts_at: string;
-  location: string | null;
-  capacity: number | null;
-  rsvp_deadline: string;
-  notice: string | null;
+export type Event = Omit<Tables<"events">, "status"> & {
   status: EventStatus;
-  reminder_sent_at: string | null;
-}
+};
 
 export type RsvpStatus = "going" | "not_going" | "maybe" | "waitlisted";
 
-export interface Rsvp {
-  event_id: string;
-  user_id: string;
+// attended는 Phase 5(Task 027)에서 rsvps 테이블에 추가될 컬럼이다.
+// 그 전까지 실쿼리 결과에는 placeholder(false)를 채워 M4 더미 UI와의 타입 호환을 유지한다.
+export type Rsvp = Omit<Tables<"rsvps">, "status"> & {
   status: RsvpStatus;
   attended: boolean;
-  responded_at: string;
-}
+};
 
+// M2~M4(정산·카풀·출석)는 아직 테이블이 없어 수기 타입을 유지한다.
+// 해당 Phase의 Task에서 생성 타입 별칭으로 교체한다.
 export interface Settlement {
   id: string;
   event_id: string;

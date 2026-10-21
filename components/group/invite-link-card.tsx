@@ -7,8 +7,10 @@ import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { reissueInviteCode } from "@/lib/actions/invites";
 
 interface InviteLinkCardProps {
+  groupId: string;
   initialCode: string;
   // 복사는 모든 멤버가 할 수 있고, 재발급은 주최자만 할 수 있다.
   canReissue: boolean;
@@ -16,8 +18,9 @@ interface InviteLinkCardProps {
 
 const subscribe = () => () => {};
 
-// 초대 링크 복사(멤버 전체)·재발급(주최자). 재발급은 로컬 상태의 코드만 바꾼다.
+// 초대 링크 복사(멤버 전체)·재발급(주최자).
 export function InviteLinkCard({
+  groupId,
   initialCode,
   canReissue,
 }: InviteLinkCardProps) {
@@ -38,11 +41,15 @@ export function InviteLinkCard({
     }
   }
 
-  function reissue() {
-    const next = `new-${crypto.randomUUID().slice(0, 8)}`;
-    setCode(next);
+  async function reissue() {
+    const result = await reissueInviteCode(groupId);
+    if (!result.ok) {
+      toast.error(result.error);
+      return;
+    }
+    setCode(result.data.code);
     toast.success(
-      "초대 코드를 재발급했습니다. 이전 링크는 더 이상 쓸 수 없습니다 (프로토타입)",
+      "초대 코드를 재발급했습니다. 이전 링크는 더 이상 쓸 수 없습니다",
     );
   }
 

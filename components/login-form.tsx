@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@/lib/utils";
+import { cn, getSafeRedirectPath } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,8 +19,9 @@ import { useState } from "react";
 
 export function LoginForm({
   className,
+  next,
   ...props
-}: React.ComponentPropsWithoutRef<"div">) {
+}: React.ComponentPropsWithoutRef<"div"> & { next?: string | null }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -39,8 +40,7 @@ export function LoginForm({
         password,
       });
       if (error) throw error;
-      // Update this route to redirect to an authenticated route. The user already has an active session.
-      router.push("/protected");
+      router.push(getSafeRedirectPath(next ?? null));
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "An error occurred");
     } finally {
@@ -109,7 +109,7 @@ export function LoginForm({
             or
             <div className="h-px flex-1 bg-border" />
           </div>
-          <GoogleSignInButton />
+          <GoogleSignInButton next={next} />
         </CardContent>
       </Card>
     </div>

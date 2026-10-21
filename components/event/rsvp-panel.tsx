@@ -9,6 +9,7 @@ import {
   type RsvpCounts,
 } from "@/components/event/rsvp-summary-bar";
 import { Button } from "@/components/ui/button";
+import { setRsvp } from "@/lib/actions/rsvps";
 import type { EventPhase } from "@/lib/event-state";
 import type { Profile, RsvpStatus } from "@/lib/types/domain";
 
@@ -20,6 +21,7 @@ export interface RsvpEntry {
 }
 
 interface RsvpPanelProps {
+  eventId: string;
   initialRsvps: RsvpEntry[];
   viewer: Profile;
   capacity: number | null;
@@ -61,20 +63,22 @@ function countOf(rsvps: RsvpEntry[]): RsvpCounts {
   return counts;
 }
 
-// 응답 버튼을 누르면 로컬 상태로 집계가 바뀐다. 정원 초과 시 대기 처리, 참석 취소 시 첫 대기자를 승급한다.
+// 응답 버튼을 누르면 서버(set_rsvp RPC)가 정원 초과 시 대기 처리, 참석 취소 시 대기자 승급까지 처리한다.
 export function RsvpPanel({
+  eventId,
   initialRsvps,
   viewer,
   capacity,
   phase,
 }: RsvpPanelProps) {
   const [rsvps, setRsvps] = useState(initialRsvps);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const open = phase === "upcoming";
   const mine = rsvps.find((r) => r.user_id === viewer.id);
   const counts = countOf(rsvps);
 
-  function choose(status: ChoosableStatus) {
-    if (!open) return;
+  async function choose(status: ChoosableStatus) {
+    if (!open || isSubmitting) return;
     // 같은 응답을 다시 눌러도 응답 시각(대기 순번)이 바뀌지 않도록 무시한다.
     if (
       mine?.status === status ||
@@ -82,43 +86,33 @@ export function RsvpPanel({
     ) {
       return;
     }
-    const others = rsvps.filter((r) => r.user_id !== viewer.id);
-    const othersGoing = others.filter((r) => r.status === "going").length;
-    const isFull = capacity !== null && othersGoing >= capacity;
-    const nextStatus: RsvpStatus =
-      status === "going" && isFull ? "waitlisted" : status;
 
-    let next: RsvpEntry[] = [
-      ...others,
-      {
-        user_id: viewer.id,
-        status: nextStatus,
-        responded_at: new Date().toISOString(),
-        profile: viewer,
-      },
-    ];
+    setIsSubmitting(true);
+    const previouslyWaitlisted = new Set(
+      rsvps.filter((r) => r.status === "waitlisted").map((r) => r.user_id),
+    );
+    const result = await setRsvp(eventId, status);
+    setIsSubmitting(false);
 
-    // 참석 자리가 비면 가장 먼저 응답한 대기자를 승급한다.
-    const wasGoing = mine?.status === "going";
-    if (wasGoing && nextStatus !== "going") {
-      const first = next
-        .filter((r) => r.status === "waitlisted")
-        .sort(byRespondedAt)[0];
-      if (first) {
-        next = next.map((r) =>
-          r.user_id === first.user_id ? { ...r, status: "going" } : r,
-        );
-        toast.info(
-          `${first.profile.display_name}님이 대기에서 참석으로 승급되었습니다`,
-        );
-      }
+    if (!result.ok) {
+      toast.error(result.error);
+      return;
     }
 
-    setRsvps(next);
+    setRsvps(result.data);
+    const updated = result.data.find((r) => r.user_id === viewer.id);
+    const promoted = result.data.find(
+      (r) => r.status === "going" && previouslyWaitlisted.has(r.user_id),
+    );
+    if (promoted) {
+      toast.info(
+        `${promoted.profile.display_name}님이 대기에서 참석으로 승급되었습니다`,
+      );
+    }
     toast.success(
-      nextStatus === "waitlisted"
+      updated?.status === "waitlisted"
         ? "정원이 가득 차 대기자로 등록되었습니다"
-        : `${GROUP_LABEL[nextStatus]}으로 응답했습니다`,
+        : `${GROUP_LABEL[updated?.status ?? status]}으로 응답했습니다`,
     );
   }
 
@@ -145,7 +139,7 @@ export function RsvpPanel({
               <Button
                 key={status}
                 variant={selected ? "default" : "outline"}
-                disabled={!open}
+                disabled={!open || isSubmitting}
                 aria-pressed={selected}
                 onClick={() => choose(status)}
               >

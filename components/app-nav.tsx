@@ -2,7 +2,7 @@
 
 import { Home, Users } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 
 import { cn } from "@/lib/utils";
 
@@ -17,8 +17,6 @@ interface AppNavProps {
 
 export function AppNav({ variant }: AppNavProps) {
   const pathname = usePathname();
-  // 프로토타입: 주최자/참여자 보기(?as=member)를 내비게이션 이동 중에도 유지한다.
-  const asMember = useSearchParams().get("as") === "member";
 
   return (
     <nav
@@ -34,7 +32,7 @@ export function AppNav({ variant }: AppNavProps) {
         return (
           <Link
             key={href}
-            href={asMember ? `${href}?as=member` : href}
+            href={href}
             aria-current={active ? "page" : undefined}
             className={cn(
               "flex items-center justify-center gap-2 text-sm transition-colors",

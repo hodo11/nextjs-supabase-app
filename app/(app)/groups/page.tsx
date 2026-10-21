@@ -7,28 +7,19 @@ import Link from "next/link";
 import { EmptyState } from "@/components/empty-state";
 import { GroupCard } from "@/components/group/group-card";
 import { Button } from "@/components/ui/button";
-import {
-  getViewerId,
-  resolveViewRole,
-  withView,
-  type PreviewSearchParams,
-} from "@/lib/dummy/preview";
 import { getMyGroups } from "@/lib/dummy/queries";
+import { requireUser } from "@/lib/supabase/auth";
 
-async function GroupsPageContent({
-  searchParams,
-}: {
-  searchParams: PreviewSearchParams;
-}) {
-  const role = await resolveViewRole(searchParams);
-  const groups = await getMyGroups(getViewerId(role));
+async function GroupsPageContent() {
+  const user = await requireUser("/groups");
+  const groups = await getMyGroups(user.id);
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">모임 목록</h1>
         <Button asChild size="sm">
-          <Link href={withView("/groups/new", role)}>
+          <Link href="/groups/new">
             <Plus />
             모임 만들기
           </Link>
@@ -49,7 +40,7 @@ async function GroupsPageContent({
                 role={g.my_role}
                 memberCount={g.member_count}
                 upcomingEventCount={g.upcoming_event_count}
-                href={withView(`/groups/${g.group.id}`, role)}
+                href={`/groups/${g.group.id}`}
               />
             </li>
           ))}
@@ -59,12 +50,10 @@ async function GroupsPageContent({
   );
 }
 
-export default function GroupsPage(
-  props: React.ComponentProps<typeof GroupsPageContent>,
-) {
+export default function GroupsPage() {
   return (
     <Suspense fallback={<PageSkeleton />}>
-      <GroupsPageContent {...props} />
+      <GroupsPageContent />
     </Suspense>
   );
 }

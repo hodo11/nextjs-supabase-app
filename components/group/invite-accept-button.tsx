@@ -1,32 +1,50 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { joinGroupByCode } from "@/lib/actions/invites";
 
 interface InviteAcceptButtonProps {
-  groupName: string;
-  redirectHref: string;
+  code: string;
+  isLoggedIn: boolean;
 }
 
-// 프로토타입: 실제 참여 처리 없이 안내 후 이동한다(로그인 복귀·참여 처리는 Phase 2에서 구현).
 export function InviteAcceptButton({
-  groupName,
-  redirectHref,
+  code,
+  isLoggedIn,
 }: InviteAcceptButtonProps) {
   const router = useRouter();
+  const [isJoining, setIsJoining] = useState(false);
+
+  if (!isLoggedIn) {
+    return (
+      <Button
+        size="lg"
+        className="w-full"
+        onClick={() =>
+          router.push(
+            `/auth/login?next=${encodeURIComponent(`/invite/${code}`)}`,
+          )
+        }
+      >
+        로그인하고 참여하기
+      </Button>
+    );
+  }
 
   return (
     <Button
       size="lg"
       className="w-full"
+      disabled={isJoining}
       onClick={() => {
-        toast.success(`"${groupName}"에 참여했습니다 (프로토타입)`);
-        router.push(redirectHref);
+        setIsJoining(true);
+        void joinGroupByCode(code);
       }}
     >
-      Google로 로그인하고 참여하기
+      {isJoining ? "참여하는 중..." : "모임 참여하기"}
     </Button>
   );
 }

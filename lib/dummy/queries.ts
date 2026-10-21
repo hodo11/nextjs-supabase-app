@@ -2,7 +2,6 @@ import { getNow } from "@/lib/dummy/clock";
 import {
   events,
   groupMembers,
-  groups,
   profiles,
   rideRequests,
   rides,
@@ -11,6 +10,7 @@ import {
   settlements,
 } from "@/lib/dummy/data";
 import { getEventPhase, type EventPhase } from "@/lib/event-state";
+import { createClient } from "@/lib/supabase/server";
 import type {
   Event,
   Group,
@@ -20,11 +20,14 @@ import type {
   Ride,
   RideRequest,
   Rsvp,
+  RsvpStatus,
   Settlement,
   SettlementPayment,
 } from "@/lib/types/domain";
 
 // 화면은 이 파일의 async 함수만 호출한다. Phase 2에서 호출부는 그대로 두고 구현만 Supabase 쿼리로 교체한다.
+// M1(모임·멤버·이벤트·RSVP·홈 할 일) 함수는 Supabase 쿼리로 교체 완료.
+// M2(정산)~M4(카풀·출석) 함수는 Phase 3~5에서 교체 예정이라 당분간 lib/dummy/data의 더미 배열을 그대로 쓴다.
 
 const byProfileId = new Map(profiles.map((p) => [p.id, p]));
 
@@ -33,7 +36,15 @@ function profileOf(userId: string): Profile {
 }
 
 export async function getProfile(userId: string): Promise<Profile> {
-  return profileOf(userId);
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("profiles")
+    .select("id, full_name")
+    .eq("id", userId)
+    .maybeSingle();
+  return data
+    ? { id: data.id, display_name: data.full_name ?? "이름 없음" }
+    : { id: userId, display_name: "알 수 없음" };
 }
 
 export interface GroupSummary {
@@ -44,37 +55,71 @@ export interface GroupSummary {
 }
 
 export async function getMyGroups(viewerId: string): Promise<GroupSummary[]> {
-  const now = await getNow();
-  return groupMembers
-    .filter((m) => m.user_id === viewerId)
-    .map((m) => {
-      const group = groups.find((g) => g.id === m.group_id)!;
-      return {
-        group,
-        my_role: m.role,
-        member_count: groupMembers.filter((x) => x.group_id === group.id)
-          .length,
-        upcoming_event_count: events.filter(
-          (e) =>
-            e.group_id === group.id &&
-            ["upcoming", "closed"].includes(getEventPhase(e, now)),
-        ).length,
-      };
-    });
+  const supabase = await createClient();
+  const { data: memberships } = await supabase
+    .from("group_members")
+    .select("group_id, role, groups(*)")
+    .eq("user_id", viewerId);
+
+  const rows = (memberships ?? []).filter((m) => m.groups !== null);
+  if (rows.length === 0) return [];
+
+  const groupIds = rows.map((m) => m.group_id);
+  const [{ data: allMembers }, { data: allEvents }] = await Promise.all([
+    supabase.from("group_members").select("group_id").in("group_id", groupIds),
+    supabase
+      .from("events")
+      .select("group_id")
+      .in("group_id", groupIds)
+      .eq("status", "active")
+      .gt("starts_at", new Date().toISOString()),
+  ]);
+
+  const memberCountByGroup = new Map<string, number>();
+  for (const m of allMembers ?? []) {
+    memberCountByGroup.set(
+      m.group_id,
+      (memberCountByGroup.get(m.group_id) ?? 0) + 1,
+    );
+  }
+  const eventCountByGroup = new Map<string, number>();
+  for (const e of allEvents ?? []) {
+    eventCountByGroup.set(
+      e.group_id,
+      (eventCountByGroup.get(e.group_id) ?? 0) + 1,
+    );
+  }
+
+  return rows.map((m) => ({
+    group: m.groups as unknown as Group,
+    my_role: m.role as GroupRole,
+    member_count: memberCountByGroup.get(m.group_id) ?? 0,
+    upcoming_event_count: eventCountByGroup.get(m.group_id) ?? 0,
+  }));
 }
 
 export async function getGroup(groupId: string): Promise<Group | null> {
-  return groups.find((g) => g.id === groupId) ?? null;
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("groups")
+    .select("*")
+    .eq("id", groupId)
+    .maybeSingle();
+  return data;
 }
 
 export async function getMyRole(
   groupId: string,
   viewerId: string,
 ): Promise<GroupRole | null> {
-  return (
-    groupMembers.find((m) => m.group_id === groupId && m.user_id === viewerId)
-      ?.role ?? null
-  );
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("group_members")
+    .select("role")
+    .eq("group_id", groupId)
+    .eq("user_id", viewerId)
+    .maybeSingle();
+  return (data?.role as GroupRole | undefined) ?? null;
 }
 
 export interface MemberWithProfile extends GroupMember {
@@ -84,9 +129,31 @@ export interface MemberWithProfile extends GroupMember {
 export async function getGroupMembers(
   groupId: string,
 ): Promise<MemberWithProfile[]> {
-  return groupMembers
-    .filter((m) => m.group_id === groupId)
-    .map((m) => ({ ...m, profile: profileOf(m.user_id) }))
+  const supabase = await createClient();
+  const [{ data: members }, { data: memberProfiles }] = await Promise.all([
+    supabase
+      .from("group_members")
+      .select("group_id, user_id, role, joined_at")
+      .eq("group_id", groupId),
+    supabase.rpc("get_group_profiles", { gid: groupId }),
+  ]);
+
+  const profileById = new Map(
+    (memberProfiles ?? []).map((p) => [
+      p.id,
+      { id: p.id, display_name: p.display_name } satisfies Profile,
+    ]),
+  );
+
+  return (members ?? [])
+    .map((m) => ({
+      ...m,
+      role: m.role as GroupRole,
+      profile: profileById.get(m.user_id) ?? {
+        id: m.user_id,
+        display_name: "알 수 없음",
+      },
+    }))
     .sort((a, b) =>
       a.role === b.role
         ? Date.parse(a.joined_at) - Date.parse(b.joined_at)
@@ -104,22 +171,32 @@ export interface EventWithPhase {
 export async function getEventsByGroup(
   groupId: string,
 ): Promise<EventWithPhase[]> {
-  const now = await getNow();
-  return events
-    .filter((e) => e.group_id === groupId)
-    .map((event) => ({ event, phase: getEventPhase(event, now) }))
-    .sort(
-      (a, b) => Date.parse(b.event.starts_at) - Date.parse(a.event.starts_at),
-    );
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("events")
+    .select("*")
+    .eq("group_id", groupId)
+    .order("starts_at", { ascending: false });
+
+  const now = new Date();
+  return (data ?? []).map((event) => ({
+    event: event as Event,
+    phase: getEventPhase(event as Event, now),
+  }));
 }
 
 export async function getEvent(
   eventId: string,
 ): Promise<EventWithPhase | null> {
-  const event = events.find((e) => e.id === eventId);
-  if (!event) return null;
-  const now = await getNow();
-  return { event, phase: getEventPhase(event, now) };
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("events")
+    .select("*")
+    .eq("id", eventId)
+    .maybeSingle();
+  if (!data) return null;
+  const event = data as Event;
+  return { event, phase: getEventPhase(event, new Date()) };
 }
 
 export interface RsvpWithProfile extends Rsvp {
@@ -127,9 +204,35 @@ export interface RsvpWithProfile extends Rsvp {
 }
 
 export async function getRsvps(eventId: string): Promise<RsvpWithProfile[]> {
-  return rsvps
-    .filter((r) => r.event_id === eventId)
-    .map((r) => ({ ...r, profile: profileOf(r.user_id) }))
+  const supabase = await createClient();
+  const [{ data: event }, { data: rows }] = await Promise.all([
+    supabase.from("events").select("group_id").eq("id", eventId).maybeSingle(),
+    supabase
+      .from("rsvps")
+      .select("event_id, user_id, status, responded_at")
+      .eq("event_id", eventId),
+  ]);
+
+  const { data: profiles } = event
+    ? await supabase.rpc("get_group_profiles", { gid: event.group_id })
+    : { data: null };
+  const profileById = new Map(
+    (profiles ?? []).map((p) => [
+      p.id,
+      { id: p.id, display_name: p.display_name },
+    ]),
+  );
+
+  return (rows ?? [])
+    .map((r) => ({
+      ...r,
+      status: r.status as RsvpStatus,
+      attended: false,
+      profile: profileById.get(r.user_id) ?? {
+        id: r.user_id,
+        display_name: "알 수 없음",
+      },
+    }))
     .sort((a, b) => Date.parse(a.responded_at) - Date.parse(b.responded_at));
 }
 
@@ -143,23 +246,40 @@ export interface PendingRsvpTask {
 export async function getPendingRsvpTasks(
   viewerId: string,
 ): Promise<PendingRsvpTask[]> {
-  const now = await getNow();
-  const myGroupIds = groupMembers
-    .filter((m) => m.user_id === viewerId)
-    .map((m) => m.group_id);
-  return events
-    .filter(
-      (e) =>
-        myGroupIds.includes(e.group_id) &&
-        getEventPhase(e, now) === "upcoming" &&
-        !rsvps.some((r) => r.event_id === e.id && r.user_id === viewerId),
-    )
-    .sort((a, b) => Date.parse(a.rsvp_deadline) - Date.parse(b.rsvp_deadline))
-    .map((event) => ({
-      event,
-      group: groups.find((g) => g.id === event.group_id)!,
-      phase: getEventPhase(event, now),
-    }));
+  const supabase = await createClient();
+  const { data: memberships } = await supabase
+    .from("group_members")
+    .select("group_id")
+    .eq("user_id", viewerId);
+  const groupIds = (memberships ?? []).map((m) => m.group_id);
+  if (groupIds.length === 0) return [];
+
+  const now = new Date();
+  const [{ data: dueEvents }, { data: responded }] = await Promise.all([
+    supabase
+      .from("events")
+      .select("*, groups(*)")
+      .in("group_id", groupIds)
+      .eq("status", "active")
+      .gt("starts_at", now.toISOString())
+      .gt("rsvp_deadline", now.toISOString())
+      .order("rsvp_deadline", { ascending: true }),
+    supabase.from("rsvps").select("event_id").eq("user_id", viewerId),
+  ]);
+
+  const respondedEventIds = new Set((responded ?? []).map((r) => r.event_id));
+
+  return (dueEvents ?? [])
+    .filter((e) => !respondedEventIds.has(e.id) && e.groups !== null)
+    .map((e) => {
+      const { groups: group, ...eventRow } = e;
+      const event = eventRow as Event;
+      return {
+        event,
+        group: group as unknown as Group,
+        phase: getEventPhase(event, now),
+      };
+    });
 }
 
 export interface UnpaidSettlementTask {
@@ -254,23 +374,31 @@ export async function getAttendanceStats(
 }
 
 export type InviteLookup =
-  | { state: "valid"; group: Group; member_count: number }
-  | { state: "already_member"; group: Group }
+  | {
+      state: "valid";
+      group: { id: string; name: string };
+      member_count: number;
+    }
+  | { state: "already_member"; group: { id: string; name: string } }
   | { state: "invalid" };
 
 export async function lookupInvite(
   code: string,
-  viewerId: string,
+  viewerId: string | null,
 ): Promise<InviteLookup> {
-  const group = groups.find((g) => g.invite_code === code);
-  if (!group) return { state: "invalid" };
-  const isMember = groupMembers.some(
-    (m) => m.group_id === group.id && m.user_id === viewerId,
-  );
-  if (isMember) return { state: "already_member", group };
-  return {
-    state: "valid",
-    group,
-    member_count: groupMembers.filter((m) => m.group_id === group.id).length,
-  };
+  const supabase = await createClient();
+  const { data } = await supabase
+    .rpc("get_group_preview", { code })
+    .maybeSingle();
+
+  if (!data) return { state: "invalid" };
+
+  const group = { id: data.id, name: data.name };
+
+  if (viewerId) {
+    const role = await getMyRole(data.id, viewerId);
+    if (role) return { state: "already_member", group };
+  }
+
+  return { state: "valid", group, member_count: Number(data.member_count) };
 }

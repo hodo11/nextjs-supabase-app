@@ -1,10 +1,11 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import { getSafeRedirectPath } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 
-export function GoogleSignInButton() {
+export function GoogleSignInButton({ next }: { next?: string | null }) {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -13,10 +14,11 @@ export function GoogleSignInButton() {
     setIsLoading(true);
     setError(null);
 
+    const redirectNext = encodeURIComponent(getSafeRedirectPath(next ?? null));
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${location.origin}/auth/callback?next=/protected`,
+        redirectTo: `${location.origin}/auth/callback?next=${redirectNext}`,
       },
     });
     // 성공하면 브라우저가 Google로 이동하므로 로딩 상태를 유지합니다.

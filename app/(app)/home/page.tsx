@@ -11,25 +11,16 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-  getViewerId,
-  resolveViewRole,
-  withView,
-  type PreviewSearchParams,
-} from "@/lib/dummy/preview";
-import {
   getMyGroups,
   getPendingRsvpTasks,
   getUnpaidSettlementTasks,
 } from "@/lib/dummy/queries";
 import { formatWon } from "@/lib/format";
+import { requireUser } from "@/lib/supabase/auth";
 
-async function HomePageContent({
-  searchParams,
-}: {
-  searchParams: PreviewSearchParams;
-}) {
-  const role = await resolveViewRole(searchParams);
-  const viewerId = getViewerId(role);
+async function HomePageContent() {
+  const user = await requireUser("/home");
+  const viewerId = user.id;
   const [tasks, groups, unpaid] = await Promise.all([
     getPendingRsvpTasks(viewerId),
     getMyGroups(viewerId),
@@ -61,7 +52,7 @@ async function HomePageContent({
                   event={event}
                   phase={phase}
                   groupName={group.name}
-                  href={withView(`/events/${event.id}`, role)}
+                  href={`/events/${event.id}`}
                 />
               </li>
             ))}
@@ -76,7 +67,7 @@ async function HomePageContent({
               {unpaid.map(({ event, settlement, payment }) => (
                 <li key={settlement.id}>
                   <Link
-                    href={withView(`/events/${event.id}/settlement`, role)}
+                    href={`/events/${event.id}/settlement`}
                     className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     <Card className="transition-colors hover:bg-accent/50">
@@ -112,7 +103,7 @@ async function HomePageContent({
             최근 모임
           </h2>
           <Button asChild variant="ghost" size="sm">
-            <Link href={withView("/groups", role)}>전체 보기</Link>
+            <Link href="/groups">전체 보기</Link>
           </Button>
         </div>
         {groups.length === 0 ? (
@@ -122,7 +113,7 @@ async function HomePageContent({
             description="모임을 만들거나 초대 링크로 참여해 보세요."
             action={
               <Button asChild size="sm">
-                <Link href={withView("/groups/new", role)}>모임 만들기</Link>
+                <Link href="/groups/new">모임 만들기</Link>
               </Button>
             }
           />
@@ -135,7 +126,7 @@ async function HomePageContent({
                   role={g.my_role}
                   memberCount={g.member_count}
                   upcomingEventCount={g.upcoming_event_count}
-                  href={withView(`/groups/${g.group.id}`, role)}
+                  href={`/groups/${g.group.id}`}
                 />
               </li>
             ))}
@@ -146,12 +137,10 @@ async function HomePageContent({
   );
 }
 
-export default function HomePage(
-  props: React.ComponentProps<typeof HomePageContent>,
-) {
+export default function HomePage() {
   return (
     <Suspense fallback={<PageSkeleton />}>
-      <HomePageContent {...props} />
+      <HomePageContent />
     </Suspense>
   );
 }

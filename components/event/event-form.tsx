@@ -19,6 +19,11 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  cancelEvent as cancelEventAction,
+  createEvent,
+  updateEvent,
+} from "@/lib/actions/events";
 import { eventSchema, type EventFormValues } from "@/lib/validations/event";
 
 const EMPTY_VALUES: EventFormValues = {
@@ -31,41 +36,59 @@ const EMPTY_VALUES: EventFormValues = {
   notify_by_email: true,
 };
 
-interface EventFormProps {
-  mode: "create" | "edit";
-  defaultValues?: EventFormValues;
-  cancelHref: string;
-  redirectHref: string;
-  // 수정 모드에서 이미 취소된 이벤트면 취소 버튼을 숨긴다.
-  canCancelEvent?: boolean;
-}
+type EventFormProps =
+  | {
+      mode: "create";
+      groupId: string;
+      defaultValues?: EventFormValues;
+      cancelHref: string;
+      redirectHref: string;
+      canCancelEvent?: never;
+    }
+  | {
+      mode: "edit";
+      eventId: string;
+      defaultValues?: EventFormValues;
+      cancelHref: string;
+      redirectHref: string;
+      // 이미 취소된 이벤트면 취소 버튼을 숨긴다.
+      canCancelEvent?: boolean;
+    };
 
-export function EventForm({
-  mode,
-  defaultValues = EMPTY_VALUES,
-  cancelHref,
-  redirectHref,
-  canCancelEvent = false,
-}: EventFormProps) {
+export function EventForm(props: EventFormProps) {
+  const { mode, cancelHref, redirectHref } = props;
+  const defaultValues = props.defaultValues ?? EMPTY_VALUES;
   const router = useRouter();
   const form = useForm<EventFormValues>({
     resolver: zodResolver(eventSchema),
     defaultValues,
   });
 
-  function onSubmit(values: EventFormValues) {
-    // 프로토타입: 저장하지 않고 안내만 표시한다.
-    const mail = values.notify_by_email
-      ? " 멤버에게 공지 메일을 보냅니다."
-      : "";
-    toast.success(
-      `${mode === "create" ? "이벤트를 만들었습니다" : "이벤트를 수정했습니다"} (프로토타입).${mail}`,
-    );
-    router.push(redirectHref);
+  async function onSubmit(values: EventFormValues) {
+    const result =
+      mode === "create"
+        ? await createEvent(props.groupId, values)
+        : await updateEvent(props.eventId, values);
+
+    if (!result.ok) {
+      toast.error(result.error);
+      return;
+    }
+    // create는 서버 액션 내부에서 이벤트 상세로 redirect한다.
+    if (mode === "edit") {
+      toast.success("이벤트를 수정했습니다");
+      router.push(redirectHref);
+    }
   }
 
-  function cancelEvent() {
-    toast.success("이벤트를 취소했습니다 (프로토타입)");
+  async function handleCancelEvent() {
+    if (mode !== "edit") return;
+    const result = await cancelEventAction(props.eventId);
+    if (!result.ok) {
+      toast.error(result.error);
+      return;
+    }
+    toast.success("이벤트를 취소했습니다");
     router.push(redirectHref);
   }
 
@@ -203,7 +226,7 @@ export function EventForm({
           >
             취소
           </Button>
-          {mode === "edit" && canCancelEvent ? (
+          {mode === "edit" && props.canCancelEvent ? (
             <ConfirmDialog
               trigger={
                 <Button
@@ -218,7 +241,7 @@ export function EventForm({
               description="취소하면 멤버의 응답이 비활성화되고 이벤트에 '취소됨'이 표시됩니다."
               confirmLabel="이벤트 취소"
               cancelLabel="돌아가기"
-              onConfirm={cancelEvent}
+              onConfirm={handleCancelEvent}
             />
           ) : null}
         </div>

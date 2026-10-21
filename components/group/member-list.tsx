@@ -15,6 +15,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  demoteFromHost,
+  leaveGroup,
+  promoteToHost,
+  removeMember,
+} from "@/lib/actions/members";
 import type { GroupRole, Profile } from "@/lib/types/domain";
 
 export interface MemberRow {
@@ -28,6 +34,7 @@ type PendingAction =
   | { type: "leave" };
 
 interface MemberListProps {
+  groupId: string;
   initialMembers: MemberRow[];
   viewerId: string;
   leaveRedirectHref: string;
@@ -57,8 +64,9 @@ const CONFIRM_COPY = {
   },
 } as const;
 
-// 멤버 관리(로컬 상태만 변경). 마지막 주최자는 강등·제거·탈퇴할 수 없다.
+// 멤버 관리. 마지막 주최자는 강등·제거·탈퇴할 수 없다(DB 트리거로도 강제).
 export function MemberList({
+  groupId,
   initialMembers,
   viewerId,
   leaveRedirectHref,
@@ -66,6 +74,7 @@ export function MemberList({
   const router = useRouter();
   const [members, setMembers] = useState(initialMembers);
   const [pending, setPending] = useState<PendingAction | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const hostCount = members.filter((m) => m.role === "host").length;
   const viewer = members.find((m) => m.user_id === viewerId);
@@ -73,13 +82,34 @@ export function MemberList({
   const isHost = viewer?.role === "host";
   const viewerIsLastHost = viewer?.role === "host" && hostCount === 1;
 
-  function confirm() {
+  async function confirm() {
     if (!pending) return;
+    setIsSubmitting(true);
+
     if (pending.type === "leave") {
-      toast.success("모임에서 나갔습니다 (프로토타입)");
+      const result = await leaveGroup(groupId);
+      if (!result.ok) {
+        toast.error(result.error);
+        setIsSubmitting(false);
+        setPending(null);
+        return;
+      }
+      toast.success("모임에서 나갔습니다");
       router.push(leaveRedirectHref);
+      return;
+    }
+
+    const { member, type } = pending;
+    const result =
+      type === "promote"
+        ? await promoteToHost(groupId, member.user_id)
+        : type === "demote"
+          ? await demoteFromHost(groupId, member.user_id)
+          : await removeMember(groupId, member.user_id);
+
+    if (!result.ok) {
+      toast.error(result.error);
     } else {
-      const { member, type } = pending;
       setMembers((prev) =>
         type === "remove"
           ? prev.filter((m) => m.user_id !== member.user_id)
@@ -90,9 +120,10 @@ export function MemberList({
             ),
       );
       toast.success(
-        `${member.profile.display_name}님: ${CONFIRM_COPY[type].label} 완료 (프로토타입)`,
+        `${member.profile.display_name}님: ${CONFIRM_COPY[type].label} 완료`,
       );
     }
+    setIsSubmitting(false);
     setPending(null);
   }
 
@@ -178,7 +209,7 @@ export function MemberList({
       <div className="flex flex-col items-start gap-2">
         <Button
           variant="outline"
-          disabled={viewerIsLastHost}
+          disabled={viewerIsLastHost || isSubmitting}
           onClick={() => setPending({ type: "leave" })}
         >
           <LogOut />

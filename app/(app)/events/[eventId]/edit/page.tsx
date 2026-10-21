@@ -8,32 +8,25 @@ import { notFound } from "next/navigation";
 import { EmptyState } from "@/components/empty-state";
 import { EventForm } from "@/components/event/event-form";
 import { Button } from "@/components/ui/button";
-import {
-  getViewerId,
-  resolveViewRole,
-  withView,
-  type PreviewSearchParams,
-} from "@/lib/dummy/preview";
 import { getEvent, getMyRole } from "@/lib/dummy/queries";
 import { toDateTimeLocal } from "@/lib/format";
+import { requireUser } from "@/lib/supabase/auth";
 
 async function EditEventPageContent({
   params,
-  searchParams,
 }: {
   params: Promise<{ eventId: string }>;
-  searchParams: PreviewSearchParams;
 }) {
   const { eventId } = await params;
-  const viewRole = await resolveViewRole(searchParams);
+  const user = await requireUser(`/events/${eventId}/edit`);
   const found = await getEvent(eventId);
   if (!found) notFound();
   const { event, phase } = found;
 
-  const myRole = await getMyRole(event.group_id, getViewerId(viewRole));
+  const myRole = await getMyRole(event.group_id, user.id);
   if (!myRole) notFound();
 
-  const eventHref = withView(`/events/${event.id}`, viewRole);
+  const eventHref = `/events/${event.id}`;
   // 종료되었거나 취소된 이벤트는 URL로 직접 들어와도 수정할 수 없다.
   const editable = phase === "upcoming" || phase === "closed";
 
@@ -70,6 +63,7 @@ async function EditEventPageContent({
       ) : (
         <EventForm
           mode="edit"
+          eventId={event.id}
           defaultValues={{
             title: event.title,
             starts_at: toDateTimeLocal(event.starts_at),

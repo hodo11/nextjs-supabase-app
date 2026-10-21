@@ -2,6 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
@@ -16,6 +17,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { createGroup } from "@/lib/actions/groups";
 import { groupSchema, type GroupFormValues } from "@/lib/validations/group";
 
 interface GroupFormProps {
@@ -23,17 +25,22 @@ interface GroupFormProps {
   redirectHref: string;
 }
 
-export function GroupForm({ cancelHref, redirectHref }: GroupFormProps) {
+export function GroupForm({ cancelHref }: GroupFormProps) {
   const router = useRouter();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const form = useForm<GroupFormValues>({
     resolver: zodResolver(groupSchema),
     defaultValues: { name: "" },
   });
 
-  function onSubmit(values: GroupFormValues) {
-    // 프로토타입: 저장하지 않고 안내만 표시한다.
-    toast.success(`"${values.name}" 모임을 만들었습니다 (프로토타입)`);
-    router.push(redirectHref);
+  async function onSubmit(values: GroupFormValues) {
+    setIsSubmitting(true);
+    const result = await createGroup(values);
+    if (!result.ok) {
+      toast.error(result.error);
+      setIsSubmitting(false);
+    }
+    // 성공 시 createGroup 내부에서 모임 상세로 redirect한다.
   }
 
   return (
@@ -56,10 +63,13 @@ export function GroupForm({ cancelHref, redirectHref }: GroupFormProps) {
           )}
         />
         <div className="flex gap-2">
-          <Button type="submit">모임 만들기</Button>
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? "만드는 중..." : "모임 만들기"}
+          </Button>
           <Button
             type="button"
             variant="outline"
+            disabled={isSubmitting}
             onClick={() => router.push(cancelHref)}
           >
             취소

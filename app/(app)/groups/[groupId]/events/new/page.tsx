@@ -7,30 +7,23 @@ import { notFound } from "next/navigation";
 
 import { EmptyState } from "@/components/empty-state";
 import { EventForm } from "@/components/event/event-form";
-import {
-  getViewerId,
-  resolveViewRole,
-  withView,
-  type PreviewSearchParams,
-} from "@/lib/dummy/preview";
 import { getGroup, getMyRole } from "@/lib/dummy/queries";
+import { requireUser } from "@/lib/supabase/auth";
 
 async function NewEventPageContent({
   params,
-  searchParams,
 }: {
   params: Promise<{ groupId: string }>;
-  searchParams: PreviewSearchParams;
 }) {
   const { groupId } = await params;
-  const viewRole = await resolveViewRole(searchParams);
+  const user = await requireUser(`/groups/${groupId}/events/new`);
   const [group, myRole] = await Promise.all([
     getGroup(groupId),
-    getMyRole(groupId, getViewerId(viewRole)),
+    getMyRole(groupId, user.id),
   ]);
   if (!group || !myRole) notFound();
 
-  const groupHref = withView(`/groups/${group.id}`, viewRole);
+  const groupHref = `/groups/${group.id}`;
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
@@ -47,6 +40,7 @@ async function NewEventPageContent({
       {myRole === "host" ? (
         <EventForm
           mode="create"
+          groupId={group.id}
           cancelHref={groupHref}
           redirectHref={groupHref}
         />

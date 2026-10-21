@@ -19,12 +19,6 @@ import { RsvpPanel } from "@/components/event/rsvp-panel";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-  getViewerId,
-  resolveViewRole,
-  withView,
-  type PreviewSearchParams,
-} from "@/lib/dummy/preview";
-import {
   getEvent,
   getGroup,
   getMyRole,
@@ -34,17 +28,16 @@ import {
   getSettlement,
 } from "@/lib/dummy/queries";
 import { formatDateTime } from "@/lib/format";
+import { requireUser } from "@/lib/supabase/auth";
 
 async function EventDetailPageContent({
   params,
-  searchParams,
 }: {
   params: Promise<{ eventId: string }>;
-  searchParams: PreviewSearchParams;
 }) {
   const { eventId } = await params;
-  const viewRole = await resolveViewRole(searchParams);
-  const viewerId = getViewerId(viewRole);
+  const user = await requireUser(`/events/${eventId}`);
+  const viewerId = user.id;
 
   const found = await getEvent(eventId);
   if (!found) notFound();
@@ -71,7 +64,7 @@ async function EventDetailPageContent({
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
         <Link
-          href={withView(`/groups/${group.id}`, viewRole)}
+          href={`/groups/${group.id}`}
           className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
           <ChevronLeft className="size-4" aria-hidden />
@@ -103,7 +96,7 @@ async function EventDetailPageContent({
           <div className="flex flex-wrap gap-2 pt-1">
             {isHost && phase !== "past" ? (
               <Button asChild variant="outline" size="sm">
-                <Link href={withView(`/events/${event.id}/edit`, viewRole)}>
+                <Link href={`/events/${event.id}/edit`}>
                   <Pencil />
                   이벤트 수정
                 </Link>
@@ -111,9 +104,7 @@ async function EventDetailPageContent({
             ) : null}
             {phase === "past" ? (
               <Button asChild variant="outline" size="sm">
-                <Link
-                  href={withView(`/events/${event.id}/settlement`, viewRole)}
-                >
+                <Link href={`/events/${event.id}/settlement`}>
                   <Wallet />
                   {settlement
                     ? "정산 보기"
@@ -142,6 +133,7 @@ async function EventDetailPageContent({
       </p>
 
       <RsvpPanel
+        eventId={event.id}
         initialRsvps={rsvps.map((r) => ({
           user_id: r.user_id,
           status: r.status,
