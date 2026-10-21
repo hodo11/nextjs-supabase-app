@@ -53,13 +53,13 @@ async function AttendancePageContent({
       <div className="flex flex-col gap-1">
         <Link
           href={withView(`/groups/${group.id}`, viewRole)}
-          className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-sm"
         >
           <ChevronLeft className="size-4" aria-hidden />
           {group.name}
         </Link>
         <h1 className="text-2xl font-bold">출석 현황</h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           종료된 이벤트 중 참석(going)으로 응답한 횟수 대비 출석 횟수입니다.
           {myRole === "host" ? "" : " 내 기록만 표시됩니다."}
         </p>
@@ -83,7 +83,7 @@ async function AttendancePageContent({
                   <TableCell className="font-medium">
                     {row.profile.display_name}
                     {row.profile.id === viewerId ? (
-                      <span className="ml-1 text-xs text-muted-foreground">
+                      <span className="text-muted-foreground ml-1 text-xs">
                         (나)
                       </span>
                     ) : null}

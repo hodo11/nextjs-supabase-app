@@ -65,7 +65,7 @@ async function EventDetailPageContent({
       <div className="flex flex-col gap-2">
         <Link
           href={`/groups/${group.id}`}
-          className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-sm"
         >
           <ChevronLeft className="size-4" aria-hidden />
           {group.name}
@@ -74,7 +74,7 @@ async function EventDetailPageContent({
           <h1 className="text-2xl font-bold">{event.title}</h1>
           <EventStatusBadge phase={phase} />
         </div>
-        <div className="flex flex-col gap-1 text-sm text-muted-foreground">
+        <div className="text-muted-foreground flex flex-col gap-1 text-sm">
           <span className="flex items-center gap-1.5">
             <CalendarDays className="size-4 shrink-0" aria-hidden />
             {formatDateTime(event.starts_at)}
@@ -122,12 +122,12 @@ async function EventDetailPageContent({
         <Card>
           <CardContent className="flex flex-col gap-1 p-4">
             <h2 className="text-sm font-semibold">공지</h2>
-            <p className="whitespace-pre-wrap text-sm">{event.notice}</p>
+            <p className="text-sm whitespace-pre-wrap">{event.notice}</p>
           </CardContent>
         </Card>
       ) : null}
 
-      <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
+      <p className="text-muted-foreground flex items-start gap-1.5 text-xs">
         <Bell className="mt-0.5 size-3.5 shrink-0" aria-hidden />
         <span>리마인드 메일: {reminder}</span>
       </p>

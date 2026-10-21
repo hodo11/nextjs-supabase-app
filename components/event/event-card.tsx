@@ -34,14 +34,14 @@ export function EventCard({
   return (
     <Link
       href={href}
-      className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="focus-visible:ring-ring block rounded-xl focus-visible:ring-2 focus-visible:outline-hidden"
     >
-      <Card className="transition-colors hover:bg-accent/50">
+      <Card className="hover:bg-accent/50 transition-colors">
         <CardContent className="flex flex-col gap-2 p-4">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               {groupName ? (
-                <p className="truncate text-xs text-muted-foreground">
+                <p className="text-muted-foreground truncate text-xs">
                   {groupName}
                 </p>
               ) : null}
@@ -49,7 +49,7 @@ export function EventCard({
             </div>
             <EventStatusBadge phase={phase} />
           </div>
-          <div className="flex flex-col gap-1 text-sm text-muted-foreground">
+          <div className="text-muted-foreground flex flex-col gap-1 text-sm">
             <span className="flex items-center gap-1.5">
               <CalendarDays className="size-4 shrink-0" aria-hidden />
               {formatDateTime(event.starts_at)}
@@ -62,7 +62,7 @@ export function EventCard({
             ) : null}
           </div>
           {goingCount !== undefined || myStatus ? (
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <div className="text-muted-foreground flex items-center justify-between text-xs">
               {goingCount !== undefined ? (
                 <span>
                   참석 {goingCount}명
@@ -72,7 +72,7 @@ export function EventCard({
                 <span />
               )}
               {myStatus ? (
-                <span className="font-medium text-foreground">
+                <span className="text-foreground font-medium">
                   내 응답: {MY_RSVP_LABEL[myStatus]}
                 </span>
               ) : null}

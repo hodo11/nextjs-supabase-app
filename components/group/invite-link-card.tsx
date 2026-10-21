@@ -58,11 +58,11 @@ export function InviteLinkCard({
       <CardContent className="flex flex-col gap-3 p-4">
         <div>
           <p className="text-sm font-medium">초대 링크</p>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-muted-foreground text-xs">
             카톡방에 붙여 넣으면 누구나 이 링크로 모임에 참여할 수 있습니다.
           </p>
         </div>
-        <p className="break-all rounded-md bg-muted px-3 py-2 font-mono text-xs">
+        <p className="bg-muted rounded-md px-3 py-2 font-mono text-xs break-all">
           {link}
         </p>
         <div className="flex flex-wrap gap-2">

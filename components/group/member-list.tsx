@@ -146,7 +146,7 @@ export function MemberList({
                 <p className="truncate text-sm font-medium">
                   {m.profile.display_name}
                   {isSelf ? (
-                    <span className="ml-1 text-xs text-muted-foreground">
+                    <span className="text-muted-foreground ml-1 text-xs">
                       (나)
                     </span>
                   ) : null}
@@ -200,7 +200,7 @@ export function MemberList({
       </ul>
 
       {hostCount === 1 && isHost ? (
-        <p className="text-xs text-muted-foreground">
+        <p className="text-muted-foreground text-xs">
           모임에는 주최자가 최소 1명 필요합니다. 다른 멤버를 주최자로 지정하기
           전에는 마지막 주최자를 해제하거나 내보낼 수 없습니다.
         </p>
@@ -216,7 +216,7 @@ export function MemberList({
           모임 나가기
         </Button>
         {viewerIsLastHost ? (
-          <p className="text-xs text-muted-foreground">
+          <p className="text-muted-foreground text-xs">
             마지막 주최자는 나갈 수 없습니다. 먼저 다른 멤버를 주최자로 지정해
             주세요.
           </p>

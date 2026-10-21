@@ -35,7 +35,7 @@ async function HomePageContent() {
         <h2 id="todo-heading" className="text-lg font-semibold">
           내 할 일
         </h2>
-        <h3 className="text-sm font-medium text-muted-foreground">
+        <h3 className="text-muted-foreground text-sm font-medium">
           응답을 기다리는 이벤트 (마감 임박 순)
         </h3>
         {tasks.length === 0 ? (
@@ -60,7 +60,7 @@ async function HomePageContent() {
         )}
         {unpaid.length > 0 ? (
           <>
-            <h3 className="mt-2 text-sm font-medium text-muted-foreground">
+            <h3 className="text-muted-foreground mt-2 text-sm font-medium">
               내야 할 정산
             </h3>
             <ul className="grid gap-3 sm:grid-cols-2">
@@ -68,15 +68,15 @@ async function HomePageContent() {
                 <li key={settlement.id}>
                   <Link
                     href={`/events/${event.id}/settlement`}
-                    className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="focus-visible:ring-ring block rounded-xl focus-visible:ring-2 focus-visible:outline-hidden"
                   >
-                    <Card className="transition-colors hover:bg-accent/50">
+                    <Card className="hover:bg-accent/50 transition-colors">
                       <CardContent className="flex items-center justify-between gap-3 p-4">
                         <div className="min-w-0">
                           <p className="truncate font-semibold">
                             {event.title}
                           </p>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-muted-foreground text-sm">
                             {formatWon(settlement.per_person)}
                           </p>
                         </div>

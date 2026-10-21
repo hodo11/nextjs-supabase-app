@@ -25,11 +25,11 @@ export function EmptyState({
         className,
       )}
     >
-      <Icon className="size-6 text-muted-foreground" aria-hidden />
+      <Icon className="text-muted-foreground size-6" aria-hidden />
       <div className="space-y-1">
         <p className="text-sm font-medium">{title}</p>
         {description ? (
-          <p className="text-xs text-muted-foreground">{description}</p>
+          <p className="text-muted-foreground text-xs">{description}</p>
         ) : null}
       </div>
       {action}

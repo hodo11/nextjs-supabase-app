@@ -42,17 +42,17 @@ export function AttendancePanel({
         <h2 id="attendance-heading" className="text-lg font-semibold">
           출석 체크
         </h2>
-        <span className="text-sm text-muted-foreground">
+        <span className="text-muted-foreground text-sm">
           {attendedCount} / {entries.length}명
         </span>
       </div>
       {!enabled ? (
-        <p className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
+        <p className="text-muted-foreground rounded-md border border-dashed p-3 text-sm">
           이벤트가 시작된 뒤에 출석을 체크할 수 있습니다.
         </p>
       ) : null}
       {entries.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           참석(going)으로 응답한 사람이 없습니다.
         </p>
       ) : (
@@ -68,7 +68,7 @@ export function AttendancePanel({
                   }
                 />
                 <span className="flex-1">{e.profile.display_name}</span>
-                <span className="text-xs text-muted-foreground">
+                <span className="text-muted-foreground text-xs">
                   {e.attended ? "출석" : "미체크"}
                 </span>
               </label>

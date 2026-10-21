@@ -21,7 +21,7 @@ export function RsvpSummaryBar({ counts }: { counts: RsvpCounts }) {
   return (
     <div className="flex flex-col gap-3">
       <div
-        className="flex h-2 w-full overflow-hidden rounded-full bg-muted"
+        className="bg-muted flex h-2 w-full overflow-hidden rounded-full"
         role="img"
         aria-label={`참석 ${counts.going}명, 미정 ${counts.maybe}명, 불참 ${counts.not_going}명, 대기 ${counts.waitlisted}명`}
       >
@@ -40,7 +40,7 @@ export function RsvpSummaryBar({ counts }: { counts: RsvpCounts }) {
       <dl className="grid grid-cols-4 gap-2 text-center">
         {SEGMENTS.map((s) => (
           <div key={s.key}>
-            <dt className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
+            <dt className="text-muted-foreground flex items-center justify-center gap-1 text-xs">
               <span className={cn("size-2 rounded-full", s.bar)} aria-hidden />
               {s.label}
             </dt>

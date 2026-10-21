@@ -386,7 +386,7 @@ export function RidePanel({
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <p className="truncate font-semibold">{ride.origin}</p>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-muted-foreground text-xs">
                           {ride.driver.display_name} 운전 ·{" "}
                           {formatTime(ride.depart_at)} 출발
                         </p>

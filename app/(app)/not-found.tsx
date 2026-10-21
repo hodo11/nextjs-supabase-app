@@ -6,7 +6,7 @@ export default function NotFound() {
   return (
     <section className="flex flex-col items-center gap-4 py-20 text-center">
       <h1 className="text-2xl font-bold">페이지를 찾을 수 없습니다</h1>
-      <p className="text-sm text-muted-foreground">
+      <p className="text-muted-foreground text-sm">
         주소가 잘못되었거나 삭제된 페이지입니다.
       </p>
       <Button asChild>

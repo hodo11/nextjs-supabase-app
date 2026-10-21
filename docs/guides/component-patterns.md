@@ -297,7 +297,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 
 // ✅ CVA로 변형 정의
 const cardVariants = cva(
-  "rounded-lg border bg-card text-card-foreground shadow-sm",
+  "bg-card text-card-foreground rounded-lg border shadow-sm",
   {
     variants: {
       variant: {

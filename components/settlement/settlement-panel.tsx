@@ -169,7 +169,7 @@ export function SettlementPanel({
           className="flex flex-col gap-6"
         >
           {!canCreate ? (
-            <p className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
+            <p className="text-muted-foreground rounded-md border border-dashed p-3 text-sm">
               이벤트가 끝난 뒤에 정산을 만들 수 있습니다.
             </p>
           ) : null}
@@ -221,7 +221,7 @@ export function SettlementPanel({
                   {previewTotal > 0 ? formatWon(previewPerPerson) : "-"}
                 </strong>
               </p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-muted-foreground text-xs">
                 10원 단위로 올림합니다. 정산을 만든 뒤에는 대상 명단이
                 고정됩니다.
               </p>
@@ -232,7 +232,7 @@ export function SettlementPanel({
             정산 만들기
           </Button>
           {headcount === 0 ? (
-            <p className="text-xs text-muted-foreground">
+            <p className="text-muted-foreground text-xs">
               참석 응답자가 없어 정산을 만들 수 없습니다.
             </p>
           ) : null}
@@ -278,7 +278,7 @@ export function SettlementPanel({
             </span>
           </div>
           <div className="flex items-baseline justify-between gap-4">
-            <span className="shrink-0 text-muted-foreground">입금 계좌</span>
+            <span className="text-muted-foreground shrink-0">입금 계좌</span>
             <span className="text-right">{settlement.bank_info}</span>
           </div>
         </CardContent>
@@ -291,13 +291,13 @@ export function SettlementPanel({
               <h2 className="text-sm font-semibold">내 정산</h2>
               <PaymentBadge state={stateOf(mine)} />
             </div>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               {formatWon(settlement.per_person)}을 위 계좌로 보내 주세요.
             </p>
             {stateOf(mine) === "unpaid" ? (
               <Button onClick={() => claim(mine.user_id)}>송금했어요</Button>
             ) : mine.paid_claimed_at ? (
-              <p className="text-xs text-muted-foreground">
+              <p className="text-muted-foreground text-xs">
                 {formatDateTime(mine.paid_claimed_at)}에 송금했다고
                 표시했습니다.
                 {mine.paid ? "" : " 주최자가 입금을 확인하면 완료로 바뀝니다."}
@@ -308,7 +308,7 @@ export function SettlementPanel({
       ) : null}
 
       {!isHost && !mine ? (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           정산 대상(참석자)이 아니어서 내야 할 금액이 없습니다.
         </p>
       ) : null}
@@ -340,7 +340,7 @@ export function SettlementPanel({
         <dl className="grid grid-cols-3 gap-2 text-center">
           {(["unpaid", "claimed", "paid"] as const).map((key) => (
             <div key={key} className="rounded-lg border p-2">
-              <dt className="text-xs text-muted-foreground">
+              <dt className="text-muted-foreground text-xs">
                 {STATE_LABEL[key]}
               </dt>
               <dd className="text-lg font-semibold">{counts[key]}</dd>

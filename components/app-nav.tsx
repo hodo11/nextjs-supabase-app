@@ -24,7 +24,7 @@ export function AppNav({ variant }: AppNavProps) {
       className={cn(
         variant === "top"
           ? "hidden items-center gap-1 sm:flex"
-          : "fixed inset-x-0 bottom-0 z-40 grid grid-cols-2 border-t bg-background sm:hidden",
+          : "bg-background fixed inset-x-0 bottom-0 z-40 grid grid-cols-2 border-t sm:hidden",
       )}
     >
       {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
@@ -37,10 +37,10 @@ export function AppNav({ variant }: AppNavProps) {
             className={cn(
               "flex items-center justify-center gap-2 text-sm transition-colors",
               variant === "top"
-                ? "rounded-md px-3 py-2 hover:bg-accent"
+                ? "hover:bg-accent rounded-md px-3 py-2"
                 : "flex-col gap-1 py-2 text-xs",
               active
-                ? "font-semibold text-foreground"
+                ? "text-foreground font-semibold"
                 : "text-muted-foreground",
             )}
           >

@@ -104,10 +104,10 @@ export function LoginForm({
               </Link>
             </div>
           </form>
-          <div className="my-4 flex items-center gap-3 text-sm text-muted-foreground">
-            <div className="h-px flex-1 bg-border" />
+          <div className="text-muted-foreground my-4 flex items-center gap-3 text-sm">
+            <div className="bg-border h-px flex-1" />
             or
-            <div className="h-px flex-1 bg-border" />
+            <div className="bg-border h-px flex-1" />
           </div>
           <GoogleSignInButton next={next} />
         </CardContent>

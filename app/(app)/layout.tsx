@@ -9,7 +9,7 @@ import { Toaster } from "@/components/ui/sonner";
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="sticky top-0 z-40 border-b bg-background">
+      <header className="bg-background sticky top-0 z-40 border-b">
         <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between gap-4 px-4">
           <div className="flex items-center gap-4">
             <Link href="/home" className="font-semibold">

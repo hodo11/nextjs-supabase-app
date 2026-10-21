@@ -48,7 +48,7 @@ async function SettlementPageContent({
       <div className="flex flex-col gap-1">
         <Link
           href={withView(`/events/${event.id}`, viewRole)}
-          className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-sm"
         >
           <ChevronLeft className="size-4" aria-hidden />
           {event.title}

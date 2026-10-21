@@ -11,7 +11,7 @@ export default function Error({
   return (
     <section className="flex flex-col items-center gap-4 py-20 text-center">
       <h1 className="text-2xl font-bold">문제가 발생했습니다</h1>
-      <p className="text-sm text-muted-foreground">
+      <p className="text-muted-foreground text-sm">
         잠시 후 다시 시도해 주세요.
       </p>
       <Button onClick={reset}>다시 시도</Button>

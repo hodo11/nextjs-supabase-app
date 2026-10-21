@@ -23,9 +23,9 @@ export function GroupCard({
   return (
     <Link
       href={href}
-      className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="focus-visible:ring-ring block rounded-xl focus-visible:ring-2 focus-visible:outline-hidden"
     >
-      <Card className="transition-colors hover:bg-accent/50">
+      <Card className="hover:bg-accent/50 transition-colors">
         <CardContent className="flex flex-col gap-3 p-4">
           <div className="flex items-start justify-between gap-2">
             <h3 className="truncate font-semibold">{group.name}</h3>
@@ -33,7 +33,7 @@ export function GroupCard({
               {role === "host" ? "주최자" : "멤버"}
             </Badge>
           </div>
-          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+          <div className="text-muted-foreground flex items-center gap-4 text-sm">
             <span className="flex items-center gap-1.5">
               <Users className="size-4" aria-hidden />
               멤버 {memberCount}명

@@ -151,7 +151,7 @@ export function RsvpPanel({
             );
           })}
         </div>
-        <p className="text-xs text-muted-foreground" role="status">
+        <p className="text-muted-foreground text-xs" role="status">
           {!open
             ? phase === "cancelled"
               ? "취소된 이벤트라 응답할 수 없습니다."
@@ -168,7 +168,7 @@ export function RsvpPanel({
         capacity !== null &&
         counts.going >= capacity &&
         mine?.status !== "going" ? (
-          <p className="text-xs text-muted-foreground">
+          <p className="text-muted-foreground text-xs">
             정원 {capacity}명이 모두 찼습니다. 지금 참석을 누르면 대기자로
             등록됩니다.
           </p>
@@ -184,7 +184,7 @@ export function RsvpPanel({
               <h3 className="text-sm font-medium">
                 {GROUP_LABEL[status]} {entries.length}명
               </h3>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-muted-foreground text-sm">
                 {entries.map((e) => e.profile.display_name).join(", ")}
               </p>
             </div>

@@ -17,7 +17,7 @@ export function MemberAvatarList({ profiles, max = 5 }: MemberAvatarListProps) {
     >
       {visible.map((p) => (
         <li key={p.id} title={p.display_name}>
-          <Avatar className="border-2 border-background">
+          <Avatar className="border-background border-2">
             <AvatarFallback>{p.display_name.slice(0, 1)}</AvatarFallback>
           </Avatar>
           <span className="sr-only">{p.display_name}</span>
@@ -25,7 +25,7 @@ export function MemberAvatarList({ profiles, max = 5 }: MemberAvatarListProps) {
       ))}
       {rest > 0 ? (
         <li>
-          <Avatar className="border-2 border-background">
+          <Avatar className="border-background border-2">
             <AvatarFallback>+{rest}</AvatarFallback>
           </Avatar>
         </li>
