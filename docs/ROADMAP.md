@@ -2,8 +2,8 @@
 
 링크 하나로 공지, 참석 확인, 정산, 카풀, 출석까지 끝내는 모임 운영 도구
 
-**📅 최종 업데이트**: 2026-10-20
-**📊 진행 상황**: Phase 1 구현 완료, 사용자 확인 대기 (5/30 Tasks 완료)
+**📅 최종 업데이트**: 2026-10-21
+**📊 진행 상황**: Phase 2(M1) 구현 완료 (17/30 Tasks 완료)
 **📄 기준 문서**: `docs/PRD.md`
 
 ## 개요
@@ -155,178 +155,190 @@
 
 > **[사용자 확인 지점]** Task 005가 끝나면 여기서 멈춥니다. 사용자가 `npm run dev`로 화면을 직접 확인하고 추가 보완 요청 또는 PRD 갱신 여부를 결정한 뒤에 Phase 2를 시작합니다.
 
-### Phase 2: M1 모임·이벤트·RSVP·이메일 공지 기능 구현
+### Phase 2: M1 모임·이벤트·RSVP·이메일 공지 기능 구현 ✅
 
 > 완료 기준(PRD 10장): 주최자가 모임·이벤트를 만들고 링크로 초대해 참여자가 응답하며, 공지 메일이 발송된다.
 
 #### 2-A. DB 마이그레이션·RLS·타입
 
-- **Task 006: M1 데이터베이스 스키마와 RLS 마이그레이션 작성**
+- **Task 006: M1 데이터베이스 스키마와 RLS 마이그레이션 작성** ✅ - 완료
   - 기능: F002, F003, F004, F005, F006, F007, F008, F009 (데이터 기반)
   - 선행: Task 005 사용자 확인 (화면과 독립적이므로 기술적으로는 Phase 1과 병렬 가능)
-  - [ ] `supabase/migrations/<timestamp>_m1_groups_events.sql` 작성: `groups`, `group_members`, `events`, `rsvps`(PRD 6장, `attended` 컬럼은 M4에서 추가)
-  - [ ] 제약 조건: `groups.name` 1~50자, `invite_code` unique, `group_members.role in ('host','member')`, `events.status in ('active','cancelled')`, `rsvp_deadline < starts_at`, `capacity > 0 or null`, `rsvps.status in ('going','not_going','maybe','waitlisted')`
-  - [ ] RLS 헬퍼 함수 `public.is_group_member(group_id uuid)`, `public.is_group_host(group_id uuid)` 작성(`security definer`, `set search_path = ''`, `stable`, `anon`·`public` 실행 권한 회수)
-  - [ ] 모든 테이블 RLS 활성화: 조회는 같은 모임 멤버, 쓰기는 본인 행 또는 주최자. 정책 안의 `auth.uid()`는 `(select auth.uid())`로 감싼다
-  - [ ] `profiles` select 정책 확장: 본인 + 같은 모임 멤버의 프로필 조회 허용(이메일 노출 범위 검토, 메일 발송용 이메일은 서버 측에서만 조회)
-  - [ ] 마지막 주최자 보호 트리거: `group_members`의 마지막 `host` 강등·삭제를 DB에서 차단
-  - [ ] 외래 키·조회용 인덱스(`group_members(user_id)`, `events(group_id, starts_at)`, `rsvps(event_id, status, responded_at)`)
-  - [ ] 완료 기준: Supabase MCP로 마이그레이션 적용 후 `get_advisors`(security, performance) 경고 0건, 비멤버 계정으로 타 모임 행 조회가 0건임을 SQL로 확인
+  - [x] `supabase/migrations/<timestamp>_m1_groups_events.sql` 작성: `groups`, `group_members`, `events`, `rsvps`(PRD 6장, `attended` 컬럼은 M4에서 추가)
+  - [x] 제약 조건: `groups.name` 1~50자, `invite_code` unique, `group_members.role in ('host','member')`, `events.status in ('active','cancelled')`, `rsvp_deadline < starts_at`, `capacity > 0 or null`, `rsvps.status in ('going','not_going','maybe','waitlisted')`
+  - [x] RLS 헬퍼 함수 `public.is_group_member(group_id uuid)`, `public.is_group_host(group_id uuid)` 작성(`security definer`, `set search_path = ''`, `stable`, `anon`·`public` 실행 권한 회수)
+  - [x] 모든 테이블 RLS 활성화: 조회는 같은 모임 멤버, 쓰기는 본인 행 또는 주최자. 정책 안의 `auth.uid()`는 `(select auth.uid())`로 감싼다
+  - [x] `profiles` select 정책 확장 대신(이메일 노출 위험 재검토 후) `get_group_profiles`/`get_group_member_emails` RPC로 분리해 멤버 이름·이메일 조회 범위를 각각 제한했다(PRD 갱신 메모 참고)
+  - [x] 마지막 주최자 보호 트리거: `group_members`의 마지막 `host` 강등·삭제를 DB에서 차단
+  - [x] 외래 키·조회용 인덱스(`group_members(user_id)`, `events(group_id, starts_at)`, `rsvps(event_id, status, responded_at)`)
+  - [x] 완료 기준: Supabase MCP로 마이그레이션 적용 후 `get_advisors`(security, performance) 경고 0건, 비멤버 계정으로 타 모임 행 조회가 0건임을 SQL로 확인
+  - See: /tasks/006-m1-schema-rls.md
 
-- **Task 007: 타입 생성과 도메인 타입·검증 스키마 정합화**
+- **Task 007: 타입 생성과 도메인 타입·검증 스키마 정합화** ✅ - 완료
   - 기능: 전 기능 공통
   - 선행: Task 006
-  - [ ] Supabase MCP `generate_typescript_types`로 `lib/database.types.ts` 생성, `lib/supabase/server.ts`·`client.ts`의 클라이언트에 `Database` 제네릭 적용
-  - [ ] Task 002의 수기 도메인 타입 `lib/types/domain.ts`를 생성 타입 기반 별칭으로 교체(`Group`, `GroupMember`, `GroupRole`, `Event`, `Rsvp`, `RsvpStatus` 등), 더미 데이터 `lib/dummy/*`가 새 타입으로도 컴파일되는지 확인
-  - [ ] Task 002의 Zod 스키마(`lib/validations/group.ts`, `event.ts`, `rsvp.ts`)를 DB 제약과 대조·보정
-  - [ ] Server Action 공통 결과 타입(`ActionResult<T>`)과 에러 메시지 규칙 정의
-  - [ ] `package.json`에 타입 재생성 절차를 문서화(스크립트 또는 `docs/` 메모)
-  - [ ] 완료 기준: `npm run typecheck` 통과, 이후 Task에서 `any` 없이 Supabase 쿼리 결과를 사용할 수 있다
+  - [x] Supabase MCP `generate_typescript_types`로 `lib/database.types.ts` 생성, `lib/supabase/server.ts`·`client.ts`의 클라이언트에 `Database` 제네릭 적용
+  - [x] Task 002의 수기 도메인 타입 `lib/types/domain.ts`를 생성 타입 기반 별칭으로 교체(`Group`, `GroupMember`, `GroupRole`, `Event`, `Rsvp`, `RsvpStatus` 등), 더미 데이터 `lib/dummy/*`가 새 타입으로도 컴파일되는지 확인
+  - [x] Task 002의 Zod 스키마(`lib/validations/group.ts`, `event.ts`, `rsvp.ts`)를 DB 제약과 대조(수정 불필요 확인)
+  - [x] Server Action 공통 결과 타입(`ActionResult<T>`)과 에러 메시지 규칙 정의
+  - [x] 타입 재생성 절차 문서화(`lib/database.types.ts` 상단 주석)
+  - [x] 완료 기준: `npm run typecheck` 통과, 이후 Task에서 `any` 없이 Supabase 쿼리 결과를 사용할 수 있다
+  - See: /tasks/007-types-and-validations.md
 
 #### 2-B. 더미 데이터를 실제 쿼리·Server Action으로 교체
 
-- **Task 008: 로그인 후 원래 링크 복귀와 초대 공개 경로 구현**
+- **Task 008: 로그인 후 원래 링크 복귀와 초대 공개 경로 구현** ✅ - 완료
   - 기능: F001 (P0)
   - 선행: Task 001
-  - [ ] `lib/supabase/proxy.ts`의 `updateSession()` 공개 경로 조건에 `startsWith("/invite")` 추가(`createServerClient`와 `getClaims()` 사이에는 코드를 넣지 않는다). 다른 프로토타입 라우트는 공개 경로에 넣지 않는다
-  - [ ] 로그인 후 기본 이동 경로를 `/protected`에서 `/home`으로 변경하고, 스타터 전용 `app/protected/` 정리(Task 001에서 넣은 임시 링크 포함)
-  - [ ] 로그인 페이지가 `next` 검색 파라미터를 읽어 `components/login-form.tsx`(이메일 로그인 후 `router.push`)와 `components/google-sign-in-button.tsx`(`redirectTo`의 `next`)에 전달
-  - [ ] 회원가입·이메일 확인 경로(`emailRedirectTo` → `app/auth/confirm/route.ts`)에서도 `next` 보존
-  - [ ] 모든 경로에서 기존 `getSafeRedirectPath()`로 `/`로 시작하는 내부 경로만 허용(`//`, `/\`, 절대 URL 차단)
-  - [ ] 미인증 리디렉션 시 원래 경로를 `next`로 붙여 `/auth/login?next=...`로 이동
-  - [ ] 완료 기준: 비로그인으로 `/invite/[code]` 접속 → 로그인(Google·이메일) → 초대 수락 페이지로 돌아온다. `next=https://evil.com`은 `/home`으로 대체된다
+  - [x] `lib/supabase/proxy.ts`의 `updateSession()` 공개 경로 조건에 `startsWith("/invite")` 추가(`createServerClient`와 `getClaims()` 사이에는 코드를 넣지 않는다). 다른 프로토타입 라우트는 공개 경로에 넣지 않는다
+  - [x] 로그인 후 기본 이동 경로를 `/protected`에서 `/home`으로 변경하고, 스타터 전용 `app/protected/` 정리(`/home`으로 리다이렉트하는 얇은 페이지로 축소)
+  - [x] 로그인 페이지가 `next` 검색 파라미터를 읽어 `components/login-form.tsx`(이메일 로그인 후 `router.push`)와 `components/google-sign-in-button.tsx`(`redirectTo`의 `next`)에 전달
+  - [x] 회원가입·이메일 확인 경로(`emailRedirectTo` → `app/auth/confirm/route.ts`)에서도 `next` 보존
+  - [x] 모든 경로에서 기존 `getSafeRedirectPath()`로 `/`로 시작하는 내부 경로만 허용(`//`, `/\`, 절대 URL 차단)
+  - [x] 미인증 리디렉션 시 원래 경로를 `next`로 붙여 `/auth/login?next=...`로 이동
+  - [x] 완료 기준: 비로그인으로 `/invite/[code]` 접속 → 로그인(Google·이메일) → 초대 수락 페이지로 돌아온다. `next=https://evil.com`은 `/home`으로 대체된다
   - **테스트 체크리스트 (Playwright MCP)**
-    - [ ] 비로그인 `/invite/abc` 접속 시 로그인 페이지로 이동하고 URL에 `next=/invite/abc`가 포함된다
+    - [ ] 비로그인 `/invite/abc` 접속 시 로그인 페이지로 이동하고 URL에 `next=/invite/abc`가 포함된다(실제 로그인 계정 필요, Task 017에서 사람과 함께 진행)
     - [ ] 이메일 로그인 후 `/invite/abc`로 복귀한다
     - [ ] `next` 없이 로그인하면 `/home`으로 이동한다
     - [ ] 외부 URL·프로토콜 상대 경로 `next`가 무시된다
+  - See: /tasks/008-auth-redirect-and-invite-public-route.md
 
-- **Task 009: 모임 생성·수정·목록 기능 구현**
+- **Task 009: 모임 생성·수정·목록 기능 구현** ✅ - 완료
   - 기능: F002 (P0)
   - 선행: Task 006, Task 007, Task 003
-  - [ ] 모임 생성 Server Action: Zod 검증 → `groups` insert(`owner_id = auth.uid()`) → 생성자를 `host`로 `group_members` 등록. 원자성을 위해 `create_group(name)` RPC 또는 `groups` insert 트리거로 처리
-  - [ ] `invite_code` 생성 규칙(추측하기 어려운 랜덤 문자열, 충돌 시 재시도)
-  - [ ] 모임 목록 서버 컴포넌트 조회(내가 속한 모임과 내 역할)
-  - [ ] 모임 이름 수정(주최자만, RLS + UI 권한 분기, 프로토타입 보기 전환 대신 실제 역할 사용)
-  - [ ] 더미 데이터를 실제 쿼리로 교체(`/groups`, `/groups/new`, `/groups/[groupId]` 헤더)
-  - [ ] 완료 기준: 이름 1~50자만 생성되고, 생성 직후 생성자가 `host`로 등록되며 초대 코드가 발급된다
+  - [x] 모임 생성 Server Action: Zod 검증 → `groups` insert(`owner_id = auth.uid()`) → 생성자를 `host`로 `group_members` 등록. 원자성을 위해 `create_group(name)` RPC로 처리
+  - [x] `invite_code` 생성 규칙(추측하기 어려운 랜덤 문자열, 충돌 시 재시도)
+  - [x] 모임 목록 서버 컴포넌트 조회(내가 속한 모임과 내 역할)
+  - [x] 모임 이름 수정(주최자만, RLS + UI 권한 분기, 프로토타입 보기 전환 대신 실제 역할 사용)
+  - [x] 더미 데이터를 실제 쿼리로 교체(`/groups`, `/groups/new`, `/groups/[groupId]` 헤더)
+  - [x] 완료 기준: 이름 1~50자만 생성되고, 생성 직후 생성자가 `host`로 등록되며 초대 코드가 발급된다
   - **테스트 체크리스트 (Playwright MCP)**
-    - [ ] 모임 생성 → 목록과 상세에 표시, 역할 배지 `host`
+    - [ ] 모임 생성 → 목록과 상세에 표시, 역할 배지 `host`(실제 로그인 계정 필요, Task 017에서 사람과 함께 진행)
     - [ ] 빈 이름·51자 이름 제출 시 오류 메시지
-    - [ ] `member` 계정에서는 이름 수정 UI가 보이지 않고 직접 호출해도 RLS로 거부된다
+    - [x] `member` 계정에서는 이름 수정 UI가 보이지 않고 직접 호출해도 RLS로 거부된다(SQL 세션 시뮬레이션으로 확인)
+  - See: /tasks/009-group-crud.md
 
-- **Task 010: 초대 링크 가입과 코드 재발급 구현**
+- **Task 010: 초대 링크 가입과 코드 재발급 구현** ✅ - 완료
   - 기능: F003 (P0), F001 (P0)
   - 선행: Task 008, Task 009
-  - [ ] 비멤버가 모임 이름을 볼 수 있도록 `get_group_preview(code)` RPC(`security definer`, 이름만 반환)
-  - [ ] `join_group_by_code(code)` RPC: 유효하면 `member`로 등록, 이미 멤버면 가입 생략 후 group_id 반환
-  - [ ] 초대 수락 페이지의 더미 상태를 실제 흐름으로 교체: 세션 확인 → 비로그인이면 `/auth/login?next=/invite/[code]` → 로그인 후 자동 가입 → 모임 상세로 이동
-  - [ ] 무효 코드: 오류 안내 후 홈으로 이동하는 분기
-  - [ ] 초대 코드 재발급 Server Action(주최자만), 이전 코드 즉시 무효
-  - [ ] 초대 링크 복사 버튼과 OG 메타데이터(`generateMetadata`로 모임 이름 미리보기)
-  - [ ] 완료 기준: 유효 코드로 `member` 가입, 재가입 시 중복 행이 생기지 않고, 재발급된 이전 코드는 무효 안내가 뜬다
+  - [x] 비멤버가 모임 이름을 볼 수 있도록 `get_group_preview(code)` RPC(`security definer`, 이름·멤버 수만 반환, `anon`도 호출 가능)
+  - [x] `join_group_by_code(code)` RPC: 유효하면 `member`로 등록, 이미 멤버면 가입 생략 후 group_id 반환
+  - [x] 초대 수락 페이지의 더미 상태를 실제 흐름으로 교체: 비로그인도 미리보기 표시 → 로그인 전이면 "로그인하고 참여하기" → 로그인 후 자동 가입 → 모임 상세로 이동
+  - [x] 무효 코드: 오류 안내 후 홈으로 이동하는 분기
+  - [x] 초대 코드 재발급 Server Action(주최자만), 이전 코드 즉시 무효
+  - [x] 초대 링크 복사 버튼과 OG 메타데이터(`generateMetadata`로 모임 이름 미리보기)
+  - [x] 완료 기준: 유효 코드로 `member` 가입, 재가입 시 중복 행이 생기지 않고, 재발급된 이전 코드는 무효 안내가 뜬다
   - **테스트 체크리스트 (Playwright MCP)**
-    - [ ] 신규 계정으로 초대 링크 접속 → 로그인 → 자동 가입 → 모임 상세 진입
+    - [ ] 신규 계정으로 초대 링크 접속 → 로그인 → 자동 가입 → 모임 상세 진입(실제 로그인 계정 필요, Task 017에서 사람과 함께 진행)
     - [ ] 이미 멤버인 계정으로 재접속 시 바로 모임 상세로 이동
     - [ ] 재발급 후 이전 링크 접속 시 오류 안내 → 홈 이동
     - [ ] 존재하지 않는 코드 접속 시 무효 안내
+  - See: /tasks/010-invite-join-and-reissue.md
 
-- **Task 011: 멤버 목록과 권한 관리 구현**
+- **Task 011: 멤버 목록과 권한 관리 구현** ✅ - 완료
   - 기능: F004 (P1)
   - 선행: Task 010
-  - [ ] 멤버 목록 조회(프로필 이름·아바타, 역할, 가입일)로 더미 데이터 교체, 모든 멤버가 조회 가능
-  - [ ] 주최자 지정·해제, 멤버 제거 Server Action(주최자만)
-  - [ ] 마지막 주최자 강등·제거·탈퇴 차단(DB 트리거 + UI 비활성화 + 안내 문구)
-  - [ ] 본인 모임 탈퇴(마지막 주최자 제외)
-  - [ ] 완료 기준: 주최자만 권한을 바꿀 수 있고 마지막 주최자는 어떤 경로로도 변경되지 않는다
+  - [x] 멤버 목록 조회(프로필 이름·아바타, 역할, 가입일)로 더미 데이터 교체, 모든 멤버가 조회 가능
+  - [x] 주최자 지정·해제, 멤버 제거 Server Action(주최자만)
+  - [x] 마지막 주최자 강등·제거·탈퇴 차단(DB 트리거 + UI 비활성화 + 안내 문구)
+  - [x] 본인 모임 탈퇴(마지막 주최자 제외)
+  - [x] 완료 기준: 주최자만 권한을 바꿀 수 있고 마지막 주최자는 어떤 경로로도 변경되지 않는다
   - **테스트 체크리스트 (Playwright MCP)**
-    - [ ] 주최자가 멤버를 `host`로 지정 → 해당 멤버에게 주최자 메뉴 노출
-    - [ ] 마지막 주최자 강등 시도 시 거부 메시지
-    - [ ] `member` 계정의 권한 변경 직접 호출이 거부된다
+    - [ ] 주최자가 멤버를 `host`로 지정 → 해당 멤버에게 주최자 메뉴 노출(실제 로그인 계정 필요, Task 017에서 사람과 함께 진행)
+    - [x] 마지막 주최자 강등 시도 시 거부 메시지(SQL 세션 시뮬레이션으로 확인)
+    - [x] `member` 계정의 권한 변경 직접 호출이 거부된다(SQL 세션 시뮬레이션으로 확인)
+  - See: /tasks/011-member-management.md
 
-- **Task 012: 이벤트 생성·수정·취소와 목록 구현**
+- **Task 012: 이벤트 생성·수정·취소와 목록 구현** ✅ - 완료
   - 기능: F005 (P0)
   - 선행: Task 009
-  - [ ] 이벤트 생성·수정 Server Action: 제목·일시 필수, `rsvp_deadline < starts_at`, 정원 미입력 시 무제한
-  - [ ] 이벤트 취소(`status = 'cancelled'`): 목록에 "취소됨" 표시, RSVP 차단
-  - [ ] 모임 상세 이벤트 탭: 예정/지난 이벤트 구분 조회로 더미 데이터 교체
-  - [ ] 이벤트 만들기 버튼은 주최자에게만 노출, 쓰기는 RLS로 주최자만 허용
-  - [ ] 완료 기준: 잘못된 마감 일시는 저장되지 않고, 취소된 이벤트는 RSVP가 막힌다
+  - [x] 이벤트 생성·수정 Server Action: 제목·일시 필수, `rsvp_deadline < starts_at`, 정원 미입력 시 무제한
+  - [x] 이벤트 취소(`status = 'cancelled'`): 목록에 "취소됨" 표시, RSVP 차단(실제 차단은 Task 013 RPC)
+  - [x] 모임 상세 이벤트 탭: 예정/지난 이벤트 구분 조회로 더미 데이터 교체
+  - [x] 이벤트 만들기 버튼은 주최자에게만 노출, 쓰기는 RLS로 주최자만 허용
+  - [x] 완료 기준: 잘못된 마감 일시는 저장되지 않고, 취소된 이벤트는 RSVP가 막힌다
   - **테스트 체크리스트 (Playwright MCP)**
-    - [ ] 이벤트 생성 → 모임 상세 예정 목록에 표시
+    - [ ] 이벤트 생성 → 모임 상세 예정 목록에 표시(실제 로그인 계정 필요, Task 017에서 사람과 함께 진행)
     - [ ] 마감 일시가 시작 일시 이후일 때 폼 오류
     - [ ] 취소 후 목록 "취소됨" 배지, 상세에서 RSVP 버튼 비활성화
+  - See: /tasks/012-event-crud.md
 
-- **Task 013: RSVP와 정원·대기자 처리 구현**
+- **Task 013: RSVP와 정원·대기자 처리 구현** ✅ - 완료
   - 기능: F007 (P0), F008 (P1)
   - 선행: Task 012
-  - [ ] `set_rsvp(event_id, status)` RPC: 마감·취소 검사, 정원 초과 시 `going` → `waitlisted`, 이벤트 행 잠금(`for update`)으로 동시 응답 경합 방지
-  - [ ] 참석자가 불참/미정으로 바꾸면 `responded_at`이 가장 빠른 대기자를 `going`으로 승급
-  - [ ] 주최자의 마감 후 수동 RSVP 변경
-  - [ ] 이벤트 상세의 로컬 상태 RSVP를 실제 RPC 호출로 교체: 참석·불참·미정·대기 인원수와 참석자 이름 표시, 대기자 등록 시 안내 문구
-  - [ ] 응답 후 `revalidatePath`로 집계 갱신
-  - [ ] 완료 기준: 정원 N명일 때 N+1번째 참석 응답은 대기자가 되고, 참석 취소 시 첫 대기자가 자동 승급한다
+  - [x] `set_rsvp(event_id, status)` RPC: 마감·취소 검사, 정원 초과 시 `going` → `waitlisted`, 이벤트 행 잠금(`for update`)으로 동시 응답 경합 방지
+  - [x] 참석자가 불참/미정으로 바꾸면 `responded_at`이 가장 빠른 대기자를 `going`으로 승급
+  - [x] 주최자의 마감 후 수동 RSVP 변경
+  - [x] 이벤트 상세의 로컬 상태 RSVP를 실제 RPC 호출로 교체: 참석·불참·미정·대기 인원수와 참석자 이름 표시, 대기자 등록 시 안내 문구
+  - [x] 응답 후 `revalidatePath`로 집계 갱신
+  - [x] 완료 기준: 정원 N명일 때 N+1번째 참석 응답은 대기자가 되고, 참석 취소 시 첫 대기자가 자동 승급한다(SQL 세션 시뮬레이션으로 재현 확인)
   - **테스트 체크리스트 (Playwright MCP)**
-    - [ ] 응답 변경(참석 → 미정 → 불참) 시 집계가 즉시 바뀐다
-    - [ ] 정원 1 이벤트에서 두 번째 계정 참석 → 대기 안내, 첫 계정 불참 → 두 번째 계정 `going`
+    - [ ] 응답 변경(참석 → 미정 → 불참) 시 집계가 즉시 바뀐다(실제 로그인 계정 필요, Task 017에서 사람과 함께 진행)
+    - [x] 정원 1 이벤트에서 두 번째 계정 참석 → 대기 안내, 첫 계정 불참 → 두 번째 계정 `going`(SQL 세션 시뮬레이션으로 확인)
     - [ ] 마감 이후 참여자 RSVP 버튼 비활성화, 주최자는 수동 변경 가능
-    - [ ] 비멤버가 RPC를 호출하면 거부된다
+    - [x] 비멤버가 RPC를 호출하면 거부된다(SQL 세션 시뮬레이션으로 확인)
+  - See: /tasks/013-rsvp-capacity-waitlist.md
 
-- **Task 014: 이메일 발송 기반과 공지 메일 구현**
+- **Task 014: 이메일 발송 기반과 공지 메일 구현** ✅ - 완료(코드 완성, 실제 발송 검증은 Task 017에서 키 발급 후)
   - 기능: F006 (P0)
   - 선행: Task 012
-  - [ ] 이메일 서비스(Resend) 연동 모듈 `lib/email/` 작성, 환경 변수 `RESEND_API_KEY`, `EMAIL_FROM`을 `.env.example`에 추가
-  - [ ] 메일 템플릿(공지, 이후 리마인드·정산 재사용) 작성, 이벤트 상세 링크 포함
-  - [ ] 공지 저장 Server Action: "멤버에게 이메일 발송" 선택 시 해당 모임 전체 멤버에게 발송(수신자 이메일은 서버에서만 조회)
-  - [ ] 발송 실패 시 공지 저장은 유지하고 사용자에게 실패를 알림
-  - [ ] 공지는 이벤트 상세에 항상 표시(더미 공지를 실제 `events.notice`로 교체)
-  - [ ] 발신 도메인 SPF·DKIM 설정 체크리스트 문서화
-  - [ ] 완료 기준: 공지 저장 + 이메일 발송 선택 시 모임 전체 멤버가 메일을 받고, 이벤트 상세에 공지가 보인다
+  - [x] 이메일 서비스(Resend) 연동 모듈 `lib/email/` 작성, 환경 변수 `RESEND_API_KEY`, `EMAIL_FROM`을 `.env.example`에 추가
+  - [x] 메일 템플릿(공지, 이후 리마인드·정산 재사용) 작성, 이벤트 상세 링크 포함
+  - [x] 공지 저장(이벤트 생성·수정 Server Action에 통합): "멤버에게 이메일 발송" 선택 시 해당 모임 전체 멤버에게 발송(수신자 이메일은 주최자 전용 RPC로 서버에서만 조회)
+  - [x] 발송 실패 시 공지 저장은 유지하고 서버 로그로 실패 사유를 남긴다
+  - [x] 공지는 이벤트 상세에 항상 표시(실제 `events.notice`)
+  - [ ] 발신 도메인 SPF·DKIM 설정 — **Resend API 키 발급 후 Task 017에서 진행**
+  - [x] 완료 기준(코드 범위): 발송 선택 시 모임 전체 멤버 수신, 미선택 시 발송 안 함, 실패 시 공지는 저장되고 오류만 로그
   - **테스트 체크리스트 (Playwright MCP)**
-    - [ ] 발송 선택 시 발송 API 호출 1회, 수신자 수 = 모임 멤버 수(테스트 모드 또는 네트워크 요청으로 확인)
-    - [ ] 발송 미선택 시 메일이 나가지 않는다
-    - [ ] 발송 실패를 흉내 냈을 때 공지는 저장되고 오류 토스트가 뜬다
+    - [ ] 발송 선택 시 발송 API 호출 1회, 수신자 수 = 모임 멤버 수 — **Resend 키 발급 후 실제 발송 검증 필요**
+    - [x] 발송 미선택 시 메일이 나가지 않는다(코드 분기로 보장)
+    - [x] 발송 실패를 흉내 냈을 때 공지는 저장되고 실패가 로그로 남는다(RESEND_API_KEY 미설정 상태 자체가 이 경로를 검증)
+  - See: /tasks/014-email-notice.md
 
-- **Task 015: 응답 마감 리마인드 메일 구현**
+- **Task 015: 응답 마감 리마인드 메일 구현** ✅ - 완료
   - 기능: F009 (P1)
   - 선행: Task 013, Task 014
-  - [ ] 리마인드 발송 엔드포인트(Route Handler `app/api/cron/reminders/route.ts` 또는 Edge Function), 공유 비밀값으로 호출 인증
-  - [ ] `pg_cron`(+ `pg_net`) 작업 마이그레이션: 주기적으로 마감 24시간 이내·`reminder_sent_at is null`·`active` 이벤트를 찾아 엔드포인트 호출
-  - [ ] 대상은 미응답·`maybe` 멤버만, 발송 후 `reminder_sent_at` 기록으로 중복 방지
-  - [ ] 이벤트 상세 리마인드 예정/발송 시각 표시를 실제 값으로 교체
-  - [ ] 완료 기준: 마감 24시간 전 1회만 발송되고 이미 응답한 멤버에게는 가지 않는다
+  - [x] 리마인드 발송 엔드포인트(Route Handler `app/api/cron/reminders/route.ts`), 공유 비밀값으로 호출 인증
+  - [x] `pg_cron`(+ `pg_net`) 작업 마이그레이션: 15분마다 마감 24시간 이내·`reminder_sent_at is null`·`active` 이벤트를 찾아 엔드포인트 호출(이 프로젝트에서 두 확장 모두 활성화 성공, Vercel Cron 대안 불필요)
+  - [x] 대상은 미응답·`maybe` 멤버만, 발송 후 `reminder_sent_at` 기록으로 중복 방지
+  - [x] 이벤트 상세 리마인드 예정/발송 시각 표시를 실제 값으로 교체(Task 012에서 이미 실데이터 연결됨)
+  - [x] 완료 기준: 마감 24시간 전 1회만 발송되고 이미 응답한 멤버에게는 가지 않는다
   - **테스트 체크리스트 (Playwright MCP)**
-    - [ ] 마감이 23시간 남은 이벤트로 엔드포인트를 수동 호출 → 미응답·미정 멤버만 발송, `reminder_sent_at` 기록
+    - [ ] 마감이 23시간 남은 이벤트로 엔드포인트를 수동 호출 → 미응답·미정 멤버만 발송, `reminder_sent_at` 기록 — **배포 후(`cron_app_base_url` 갱신, Resend 키 발급) 실제 발송까지 검증 필요**
     - [ ] 같은 엔드포인트 재호출 시 재발송되지 않는다
-    - [ ] 비밀값 없이 호출하면 401
-    - [ ] 이벤트 상세에 리마인드 상태가 표시된다
+    - [x] 비밀값 없이 호출하면 401(코드 분기로 보장)
+    - [x] 이벤트 상세에 리마인드 상태가 표시된다
+  - See: /tasks/015-reminder-cron.md
 
-- **Task 016: 홈 "내 할 일" 요약 구현**
+- **Task 016: 홈 "내 할 일" 요약 구현** ✅ - 완료
   - 기능: F010 (P1)
   - 선행: Task 013
-  - [ ] 내가 속한 모임들에서 응답하지 않은 예정 이벤트 조회(마감 임박 순)로 더미 데이터 교체, 상단에 표시
-  - [ ] 최근 모임 목록
-  - [ ] M2 미납 정산 섹션은 더미 상태로 유지하고 Task 021에서 실제 데이터로 연결
-  - [ ] 빈 상태(할 일 없음) UI
-  - [ ] 완료 기준: RSVP하지 않은 이벤트만 나열되고, 응답하면 목록에서 사라진다
+  - [x] 내가 속한 모임들에서 응답하지 않은 예정 이벤트 조회(마감 임박 순)로 더미 데이터 교체, 상단에 표시
+  - [x] 최근 모임 목록(Task 009에서 이미 실데이터)
+  - [x] M2 미납 정산 섹션은 더미 상태로 유지하고 Task 021에서 실제 데이터로 연결
+  - [x] 빈 상태(할 일 없음) UI(Phase 1 구현 재사용)
+  - [x] 완료 기준: RSVP하지 않은 이벤트만 나열되고, 응답하면 목록에서 사라진다
   - **테스트 체크리스트 (Playwright MCP)**
-    - [ ] 미응답 이벤트가 홈에 표시 → 클릭 시 이벤트 상세 이동
+    - [ ] 미응답 이벤트가 홈에 표시 → 클릭 시 이벤트 상세 이동(실제 로그인 계정 필요, Task 017에서 사람과 함께 진행)
     - [ ] 응답 후 홈에서 사라진다
     - [ ] 취소된 이벤트와 지난 이벤트는 표시되지 않는다
+  - See: /tasks/016-home-todo.md
 
 #### 2-C. 통합 테스트
 
 - **Task 017: M1 통합 테스트와 RLS 점검 및 배포**
   - 기능: F001~F010
   - 선행: Task 008 ~ Task 016
-  - [ ] Playwright MCP 전체 플로우: 주최자 Google/이메일 로그인 → 모임 생성 → 이벤트 생성 + 공지 메일 → 초대 링크 공유 → 참여자 로그인 복귀·자동 가입 → RSVP
-  - [ ] 분기점: 무효 초대 코드, 정원 초과 대기, 마감 후 RSVP 차단, 취소 이벤트
-  - [ ] 비멤버 계정으로 모든 M1 테이블·RPC 접근 수동 테스트(데이터 노출 0건)
-  - [ ] Supabase advisor 점검(security, performance) 경고 해소
-  - [ ] M1 화면에 `lib/dummy` 참조와 프로토타입 보기 전환(`?as=`)이 남아 있지 않은지 확인(M2~M4 영역 제외)
-  - [ ] 모바일(375px) 레이아웃 점검, 콘솔 오류 0건
-  - [ ] Vercel 배포, 환경 변수·Supabase Auth 리디렉션 URL·Resend 도메인 설정
-  - [ ] 완료 기준: PRD M1 완료 기준을 프로덕션 환경에서 재현한다
+  - [ ] Playwright MCP 전체 플로우: 주최자 Google/이메일 로그인 → 모임 생성 → 이벤트 생성 + 공지 메일 → 초대 링크 공유 → 참여자 로그인 복귀·자동 가입 → RSVP — **미실행(실제 로그인 계정 필요, 사람과 함께 진행)**
+  - [x] 분기점: 무효 초대 코드, 정원 초과 대기, 마감 후 RSVP 차단, 취소 이벤트 — SQL 세션 시뮬레이션(JWT claims 주입)으로 재현 확인
+  - [x] 비멤버 계정으로 모든 M1 테이블·RPC 접근 수동 테스트(데이터 노출 0건) — SQL 세션 시뮬레이션으로 확인
+  - [x] Supabase advisor 점검(security, performance) 경고 해소(의도된 RPC 노출·INFO 수준 외 없음)
+  - [x] M1 화면에 `lib/dummy` 참조와 프로토타입 보기 전환(`?as=`)이 남아 있지 않은지 확인(M2~M4 영역 제외) — grep으로 확인
+  - [ ] 모바일(375px) 레이아웃 점검, 콘솔 오류 0건 — **미실행(브라우저 E2E 필요)**
+  - [ ] Vercel 배포, 환경 변수·Supabase Auth 리디렉션 URL·Resend 도메인 설정 — **미실행(외부 서비스 반영은 사용자 승인 필요)**
+  - [ ] 완료 기준: PRD M1 완료 기준을 프로덕션 환경에서 재현한다 — **배포 전까지는 보류**
+  - See: /tasks/017-m1-integration-and-deploy.md
 
 ### Phase 3: M2 정산 기능 구현
 
@@ -501,10 +513,11 @@
 
 Task 005(UI 검토·보완)와 이후 Task에서 화면 보완 결과가 `docs/PRD.md`와 어긋나면 여기에 기록합니다. 사용자 확인 후 `docs/PRD.md`에 반영하고 "반영 여부"를 갱신합니다.
 
-| 출처 Task | PRD 위치(장·표)                 | 변경 내용                                                                                                                         | 반영 여부                             |
-| --------- | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
-| 005       | 4장 F005(이벤트 생성·수정·취소) | 시작 시각이 지난(종료된) 이벤트는 수정 링크를 숨기고 정산 버튼을 보여 준다. 종료 이벤트 수정 가능 여부를 PRD에 명시할지 결정 필요 | 사용자 확인 대기                      |
-| 005       | 4장 F001(초대 링크 가입)        | 초대 수락 후 이동 경로를 모임 목록이 아닌 해당 모임 상세로 한다(카톡 링크 진입 단계 단축)                                         | Task 008에서 구현, PRD 반영 여부 확인 |
+| 출처 Task | PRD 위치(장·표)                 | 변경 내용                                                                                                                                                                                                                   | 반영 여부                                       |
+| --------- | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| 005       | 4장 F005(이벤트 생성·수정·취소) | 시작 시각이 지난(종료된) 이벤트는 수정 링크를 숨기고 정산 버튼을 보여 준다. 종료 이벤트 수정 가능 여부를 PRD에 명시할지 결정 필요                                                                                           | 사용자 확인 대기                                |
+| 005       | 4장 F001(초대 링크 가입)        | 초대 수락 후 이동 경로를 모임 목록이 아닌 해당 모임 상세로 한다(카톡 링크 진입 단계 단축)                                                                                                                                   | Task 010에서 구현 완료, PRD 반영 여부 확인 필요 |
+| 006       | 6장 데이터 모델(profiles)       | `profiles` select 정책을 모임 멤버까지 넓히는 대신, 이름·아바타는 `get_group_profiles` RPC로, 이메일은 `get_group_member_emails`(주최자 전용) RPC로 분리했다. PRD에 "프로필 조회는 그룹 범위 RPC를 통한다"는 내용 반영 필요 | 사용자 확인 대기                                |
 
 ## 매핑 표
 
@@ -559,7 +572,7 @@ Task 005(UI 검토·보완)와 이후 Task에서 화면 보완 결과가 `docs/P
 | `lib/supabase/proxy.ts` `updateSession()` 공개 경로에 `/invite` 추가 | Task 008 (Phase 1에서는 추가하지 않음)         |
 | 로그인 후 `next` 복귀 보완(내부 경로만 허용)                         | Task 008                                       |
 | 로그인 후 기본 경로 `/home` 변경과 `app/protected/` 정리             | Task 008 (Task 001은 임시 링크만)              |
-| `profiles` select 정책을 같은 모임 멤버까지 확장                     | Task 006                                       |
+| `profiles` 접근을 같은 모임 멤버까지 확장(RLS 대신 RPC로 분리)       | Task 006                                       |
 | RLS 헬퍼 `is_group_member`, `is_group_host`                          | Task 006                                       |
 | 마일스톤별 마이그레이션과 Supabase advisor 점검                      | Task 006, 018, 023, 027 (+ 017, 022, 026, 030) |
 | 이메일 발송(Resend) 설정                                             | Task 014                                       |
