@@ -37,7 +37,7 @@ export function GoogleSignInButton({ next }: { next?: string | null }) {
         disabled={isLoading}
         onClick={handleGoogleSignIn}
       >
-        {isLoading ? "Redirecting to Google..." : "Continue with Google"}
+        {isLoading ? "Google로 이동하는 중..." : "Google로 계속하기"}
       </Button>
       {error && <p className="text-sm text-red-500">{error}</p>}
     </div>
