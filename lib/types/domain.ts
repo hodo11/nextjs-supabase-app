@@ -30,23 +30,12 @@ export type Rsvp = Omit<Tables<"rsvps">, "status"> & {
   attended: boolean;
 };
 
-// M2~M4(정산·카풀·출석)는 아직 테이블이 없어 수기 타입을 유지한다.
+export type Settlement = Tables<"settlements">;
+
+export type SettlementPayment = Tables<"settlement_payments">;
+
+// M3~M4(카풀·출석)는 아직 테이블이 없어 수기 타입을 유지한다.
 // 해당 Phase의 Task에서 생성 타입 별칭으로 교체한다.
-export interface Settlement {
-  id: string;
-  event_id: string;
-  total_amount: number;
-  per_person: number;
-  bank_info: string;
-}
-
-export interface SettlementPayment {
-  settlement_id: string;
-  user_id: string;
-  paid_claimed_at: string | null;
-  paid: boolean;
-}
-
 export interface Ride {
   id: string;
   event_id: string;

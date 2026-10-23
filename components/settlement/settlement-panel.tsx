@@ -23,6 +23,12 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import {
+  claimSettlementPayment,
+  confirmSettlementPayment,
+  createSettlement,
+  resendSettlementEmail,
+} from "@/lib/actions/settlements";
 import { formatDateTime, formatWon } from "@/lib/format";
 import type { Profile } from "@/lib/types/domain";
 import {
@@ -39,12 +45,14 @@ export interface PaymentEntry {
 }
 
 export interface SettlementInfo {
+  id: string;
   total_amount: number;
   per_person: number;
   bank_info: string;
 }
 
 interface SettlementPanelProps {
+  eventId: string;
   goingProfiles: Profile[];
   initialSettlement: SettlementInfo | null;
   initialPayments: PaymentEntry[];
@@ -89,6 +97,7 @@ function PaymentBadge({ state }: { state: PaymentState }) {
 }
 
 export function SettlementPanel({
+  eventId,
   goingProfiles,
   initialSettlement,
   initialPayments,
@@ -100,6 +109,8 @@ export function SettlementPanel({
   const [payments, setPayments] = useState(initialPayments);
   const [pendingValues, setPendingValues] =
     useState<SettlementFormValues | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
+  const [isResending, setIsResending] = useState(false);
 
   const form = useForm<SettlementFormValues>({
     resolver: zodResolver(settlementSchema),
@@ -114,41 +125,70 @@ export function SettlementPanel({
   const previewTotal = /^\d+$/.test(watchedTotal) ? Number(watchedTotal) : 0;
   const previewPerPerson = calcPerPerson(previewTotal, headcount);
 
-  function create() {
+  async function create() {
     if (!pendingValues) return;
-    const total = Number(pendingValues.total_amount);
-    setSettlement({
-      total_amount: total,
-      per_person: calcPerPerson(total, headcount),
-      bank_info: pendingValues.bank_info,
-    });
-    setPayments(
-      goingProfiles.map((profile) => ({
-        user_id: profile.id,
-        profile,
-        paid: false,
-        paid_claimed_at: null,
-      })),
-    );
+    setIsCreating(true);
+    const result = await createSettlement(eventId, pendingValues);
+    setIsCreating(false);
     setPendingValues(null);
-    toast.success("정산을 만들고 참석자에게 메일을 보냈습니다 (프로토타입)");
+    if (!result.ok) {
+      toast.error(result.error);
+      return;
+    }
+    setSettlement(result.data.settlement);
+    setPayments(result.data.payments);
+    toast.success("정산을 만들고 참석자에게 메일을 보냈습니다");
   }
 
-  function togglePaid(userId: string, paid: boolean) {
+  async function handleResend() {
+    setIsResending(true);
+    const result = await resendSettlementEmail(eventId, settlement!.id);
+    setIsResending(false);
+    if (!result.ok) {
+      toast.error(result.error);
+      return;
+    }
+    if (result.data.sent) {
+      toast.success("미납자에게 정산 메일을 다시 보냈습니다.");
+    } else {
+      toast.error(result.data.reason ?? "메일을 보내지 못했습니다.");
+    }
+  }
+
+  async function togglePaid(userId: string, paid: boolean) {
+    const result = await confirmSettlementPayment(
+      eventId,
+      settlement!.id,
+      userId,
+      paid,
+    );
+    if (!result.ok) {
+      toast.error(result.error);
+      return;
+    }
     setPayments((prev) =>
-      prev.map((p) => (p.user_id === userId ? { ...p, paid } : p)),
+      prev.map((p) => (p.user_id === userId ? { ...p, ...result.data } : p)),
     );
   }
 
-  function claim(userId: string) {
+  async function claim(userId: string, value: boolean) {
+    const result = await claimSettlementPayment(eventId, settlement!.id, value);
+    if (!result.ok) {
+      toast.error(result.error);
+      return;
+    }
     setPayments((prev) =>
       prev.map((p) =>
         p.user_id === userId
-          ? { ...p, paid_claimed_at: "2026-10-20T12:00:00+09:00" }
+          ? { ...p, paid_claimed_at: result.data.paid_claimed_at }
           : p,
       ),
     );
-    toast.success("송금했다고 표시했습니다. 주최자가 확인하면 완료됩니다");
+    toast.success(
+      value
+        ? "송금했다고 표시했습니다. 주최자가 확인하면 완료됩니다"
+        : "송금 표시를 취소했습니다",
+    );
   }
 
   // ── 정산 전 ──
@@ -228,7 +268,10 @@ export function SettlementPanel({
             </CardContent>
           </Card>
 
-          <Button type="submit" disabled={!canCreate || headcount === 0}>
+          <Button
+            type="submit"
+            disabled={!canCreate || headcount === 0 || isCreating}
+          >
             정산 만들기
           </Button>
           {headcount === 0 ? (
@@ -295,13 +338,28 @@ export function SettlementPanel({
               {formatWon(settlement.per_person)}을 위 계좌로 보내 주세요.
             </p>
             {stateOf(mine) === "unpaid" ? (
-              <Button onClick={() => claim(mine.user_id)}>송금했어요</Button>
+              <Button onClick={() => claim(mine.user_id, true)}>
+                송금했어요
+              </Button>
             ) : mine.paid_claimed_at ? (
-              <p className="text-muted-foreground text-xs">
-                {formatDateTime(mine.paid_claimed_at)}에 송금했다고
-                표시했습니다.
-                {mine.paid ? "" : " 주최자가 입금을 확인하면 완료로 바뀝니다."}
-              </p>
+              <div className="flex flex-col gap-2">
+                <p className="text-muted-foreground text-xs">
+                  {formatDateTime(mine.paid_claimed_at)}에 송금했다고
+                  표시했습니다.
+                  {mine.paid
+                    ? ""
+                    : " 주최자가 입금을 확인하면 완료로 바뀝니다."}
+                </p>
+                {!mine.paid ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => claim(mine.user_id, false)}
+                  >
+                    송금 표시 취소
+                  </Button>
+                ) : null}
+              </div>
             ) : null}
           </CardContent>
         </Card>
@@ -325,11 +383,8 @@ export function SettlementPanel({
             <Button
               variant="outline"
               size="sm"
-              onClick={() =>
-                toast.success(
-                  "미납자에게 정산 메일을 다시 보냈습니다 (프로토타입)",
-                )
-              }
+              disabled={isResending}
+              onClick={handleResend}
             >
               <Mail />
               메일 재발송

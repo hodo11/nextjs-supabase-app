@@ -6,8 +6,6 @@ import {
   rideRequests,
   rides,
   rsvps,
-  settlementPayments,
-  settlements,
 } from "@/lib/dummy/data";
 import { getEventPhase, type EventPhase } from "@/lib/event-state";
 import { createClient } from "@/lib/supabase/server";
@@ -292,21 +290,36 @@ export interface UnpaidSettlementTask {
 export async function getUnpaidSettlementTasks(
   viewerId: string,
 ): Promise<UnpaidSettlementTask[]> {
-  return settlementPayments
-    .filter((p) => p.user_id === viewerId && !p.paid)
-    .map((payment) => {
-      const settlement = settlements.find(
-        (s) => s.id === payment.settlement_id,
-      )!;
-      const event = events.find((e) => e.id === settlement.event_id)!;
-      return { event, settlement, payment };
+  const supabase = await createClient();
+  const { data: rows } = await supabase
+    .from("settlement_payments")
+    .select("*, settlements(*, events(*))")
+    .eq("user_id", viewerId)
+    .eq("paid", false);
+
+  return (rows ?? [])
+    .filter((r) => r.settlements !== null && r.settlements.events !== null)
+    .map((r) => {
+      const { settlements: settlementRow, ...payment } = r;
+      const { events: eventRow, ...settlement } = settlementRow!;
+      return {
+        event: eventRow as Event,
+        settlement: settlement as Settlement,
+        payment: payment as SettlementPayment,
+      };
     });
 }
 
 export async function getSettlement(
   eventId: string,
 ): Promise<Settlement | null> {
-  return settlements.find((s) => s.event_id === eventId) ?? null;
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("settlements")
+    .select("*")
+    .eq("event_id", eventId)
+    .maybeSingle();
+  return data;
 }
 
 export interface PaymentWithProfile extends SettlementPayment {
@@ -316,9 +329,39 @@ export interface PaymentWithProfile extends SettlementPayment {
 export async function getSettlementPayments(
   settlementId: string,
 ): Promise<PaymentWithProfile[]> {
-  return settlementPayments
-    .filter((p) => p.settlement_id === settlementId)
-    .map((p) => ({ ...p, profile: profileOf(p.user_id) }));
+  const supabase = await createClient();
+  const { data: settlement } = await supabase
+    .from("settlements")
+    .select("event_id")
+    .eq("id", settlementId)
+    .maybeSingle();
+  const { data: rows } = await supabase
+    .from("settlement_payments")
+    .select("*")
+    .eq("settlement_id", settlementId);
+  const { data: event } = settlement
+    ? await supabase
+        .from("events")
+        .select("group_id")
+        .eq("id", settlement.event_id)
+        .maybeSingle()
+    : { data: null };
+  const { data: profiles } = event
+    ? await supabase.rpc("get_group_profiles", { gid: event.group_id })
+    : { data: null };
+  const profileById = new Map(
+    (profiles ?? []).map((p) => [
+      p.id,
+      { id: p.id, display_name: p.display_name },
+    ]),
+  );
+  return (rows ?? []).map((p) => ({
+    ...p,
+    profile: profileById.get(p.user_id) ?? {
+      id: p.user_id,
+      display_name: "알 수 없음",
+    },
+  }));
 }
 
 export interface RideRequestWithProfile extends RideRequest {

@@ -6,8 +6,6 @@ import type {
   Ride,
   RideRequest,
   Rsvp,
-  Settlement,
-  SettlementPayment,
 } from "@/lib/types/domain";
 
 // 시각은 모두 KST(+09:00) 기준으로 적는다. 기준 시각은 clock.ts (2026-10-20 12:00 KST).
@@ -221,32 +219,6 @@ export const rsvps: Rsvp[] = [
   rsvp("e6", "u1", "going", "2026-10-03T09:00:00+09:00", true),
   rsvp("e6", "u2", "going", "2026-10-03T10:00:00+09:00", true),
   rsvp("e6", "u3", "going", "2026-10-03T11:00:00+09:00", false),
-];
-
-export const settlements: Settlement[] = [
-  {
-    id: "s1",
-    event_id: "e3",
-    total_amount: 58000,
-    per_person: 11600,
-    bank_info: "카카오뱅크 3333-01-1234567 (김하늘)",
-  },
-];
-
-function payment(
-  user_id: string,
-  paid_claimed_at: string | null,
-  paid: boolean,
-): SettlementPayment {
-  return { settlement_id: "s1", user_id, paid_claimed_at, paid };
-}
-
-export const settlementPayments: SettlementPayment[] = [
-  payment("u1", null, true),
-  payment("u2", "2026-10-11T09:00:00+09:00", false),
-  payment("u3", "2026-10-11T10:00:00+09:00", true),
-  payment("u4", null, false),
-  payment("u5", "2026-10-12T09:00:00+09:00", false),
 ];
 
 export const rides: Ride[] = [

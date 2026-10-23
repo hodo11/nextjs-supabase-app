@@ -41,7 +41,7 @@ export function SignUpForm({
     }
 
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -49,6 +49,15 @@ export function SignUpForm({
         },
       });
       if (error) throw error;
+
+      // Supabase는 이메일 열람(enumeration) 공격을 막기 위해, 이미 가입되어
+      // 인증까지 완료된 이메일로 signUp을 호출해도 에러 없이 성공 응답을 준다.
+      // 이 경우 identities 배열이 비어 있으므로 "이미 가입된 이메일" 신호로 사용한다.
+      if (!data.user || (data.user.identities?.length ?? 0) === 0) {
+        setError("이미 가입된 이메일입니다. 로그인해주세요.");
+        return;
+      }
+
       router.push("/auth/sign-up-success");
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "오류가 발생했습니다.");

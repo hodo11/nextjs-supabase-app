@@ -187,20 +187,151 @@ export type Database = {
           },
         ];
       };
+      settlement_payments: {
+        Row: {
+          paid: boolean;
+          paid_claimed_at: string | null;
+          settlement_id: string;
+          user_id: string;
+        };
+        Insert: {
+          paid?: boolean;
+          paid_claimed_at?: string | null;
+          settlement_id: string;
+          user_id: string;
+        };
+        Update: {
+          paid?: boolean;
+          paid_claimed_at?: string | null;
+          settlement_id?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "settlement_payments_settlement_id_fkey";
+            columns: ["settlement_id"];
+            isOneToOne: false;
+            referencedRelation: "settlements";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      settlements: {
+        Row: {
+          bank_info: string;
+          created_at: string;
+          created_by: string;
+          event_id: string;
+          id: string;
+          per_person: number;
+          total_amount: number;
+        };
+        Insert: {
+          bank_info: string;
+          created_at?: string;
+          created_by: string;
+          event_id: string;
+          id?: string;
+          per_person: number;
+          total_amount: number;
+        };
+        Update: {
+          bank_info?: string;
+          created_at?: string;
+          created_by?: string;
+          event_id?: string;
+          id?: string;
+          per_person?: number;
+          total_amount?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "settlements_event_id_fkey";
+            columns: ["event_id"];
+            isOneToOne: true;
+            referencedRelation: "events";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: {
       [_ in never]: never;
     };
     Functions: {
+      claim_settlement_payment: {
+        Args: { p_claim: boolean; p_settlement_id: string };
+        Returns: {
+          paid: boolean;
+          paid_claimed_at: string | null;
+          settlement_id: string;
+          user_id: string;
+        }[];
+        SetofOptions: {
+          from: "*";
+          to: "settlement_payments";
+          isOneToOne: false;
+          isSetofReturn: true;
+        };
+      };
+      confirm_settlement_payment: {
+        Args: {
+          p_paid: boolean;
+          p_settlement_id: string;
+          p_user_id: string;
+        };
+        Returns: {
+          paid: boolean;
+          paid_claimed_at: string | null;
+          settlement_id: string;
+          user_id: string;
+        }[];
+        SetofOptions: {
+          from: "*";
+          to: "settlement_payments";
+          isOneToOne: false;
+          isSetofReturn: true;
+        };
+      };
       create_group: { Args: { group_name: string }; Returns: string };
-      generate_invite_code: { Args: Record<string, never>; Returns: string };
+      create_settlement: {
+        Args: {
+          p_bank_info: string;
+          p_event_id: string;
+          p_total_amount: number;
+        };
+        Returns: {
+          bank_info: string;
+          created_at: string;
+          created_by: string;
+          event_id: string;
+          id: string;
+          per_person: number;
+          total_amount: number;
+        }[];
+        SetofOptions: {
+          from: "*";
+          to: "settlements";
+          isOneToOne: false;
+          isSetofReturn: true;
+        };
+      };
+      generate_invite_code: { Args: never; Returns: string };
       get_group_member_emails: {
         Args: { gid: string };
-        Returns: { user_id: string; email: string; display_name: string }[];
+        Returns: {
+          display_name: string;
+          email: string;
+          user_id: string;
+        }[];
       };
       get_group_preview: {
         Args: { code: string };
-        Returns: { id: string; name: string; member_count: number }[];
+        Returns: {
+          id: string;
+          member_count: number;
+          name: string;
+        }[];
       };
       get_group_profiles: {
         Args: { gid: string };
@@ -208,6 +339,14 @@ export type Database = {
           avatar_url: string;
           display_name: string;
           id: string;
+        }[];
+      };
+      get_settlement_recipient_emails: {
+        Args: { sid: string };
+        Returns: {
+          display_name: string;
+          email: string;
+          user_id: string;
         }[];
       };
       is_group_host: { Args: { gid: string }; Returns: boolean };
@@ -222,6 +361,12 @@ export type Database = {
           status: string;
           user_id: string;
         }[];
+        SetofOptions: {
+          from: "*";
+          to: "rsvps";
+          isOneToOne: false;
+          isSetofReturn: true;
+        };
       };
     };
     Enums: {
